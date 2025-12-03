@@ -7,6 +7,7 @@ import { ExamManager } from './components/ExamManager';
 import { ExamGrader } from './components/ExamGrader';
 import { Report } from './components/Report';
 import { Login } from './components/Login';
+import { KarateLogo } from './components/KarateLogo';
 import { Menu, Users, Calendar, ClipboardCheck, BarChart2, Shield, LogOut } from 'lucide-react';
 
 type View = 'senseis' | 'students' | 'exams' | 'grader' | 'reports';
@@ -102,7 +103,7 @@ const App: React.FC = () => {
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex md:w-64 flex-col bg-red-900 shadow-xl z-10">
         <div className="p-6 flex items-center justify-center border-b border-red-800">
-           <Shield className="text-white mr-2" size={32} />
+           <KarateLogo className="text-white mr-2" size={32} />
            <h1 className="text-2xl font-extrabold text-white tracking-wider">KarateFlow</h1>
         </div>
         <nav className="flex-1 p-4 space-y-2">
@@ -127,7 +128,7 @@ const App: React.FC = () => {
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 w-full bg-red-900 text-white z-20 flex justify-between items-center p-4 shadow-md">
         <div className="flex items-center">
-            <Shield className="mr-2" />
+            <KarateLogo className="mr-2" size={24} />
             <span className="font-bold text-lg">KarateFlow</span>
         </div>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>

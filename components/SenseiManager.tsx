@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sensei } from '../types';
 import { storageService } from '../services/storageService';
-import { UserPlus, Trash2 } from 'lucide-react';
+import { UserPlus, Trash2, Check, X } from 'lucide-react';
 
 interface Props {
   data: Sensei[];
@@ -11,6 +11,7 @@ interface Props {
 export const SenseiManager: React.FC<Props> = ({ data, onUpdate }) => {
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +27,19 @@ export const SenseiManager: React.FC<Props> = ({ data, onUpdate }) => {
     setName('');
     setIsSubmitting(false);
     onUpdate();
+  };
+
+  const confirmDelete = async (id: string) => {
+      setIsSubmitting(true);
+      const { error } = await storageService.deleteSensei(id);
+      setIsSubmitting(false);
+      
+      if (error) {
+          alert(`Erro ao excluir sensei: ${error.message || JSON.stringify(error)}`);
+      } else {
+          setDeletingId(null);
+          onUpdate();
+      }
   };
 
   return (
@@ -70,15 +84,45 @@ export const SenseiManager: React.FC<Props> = ({ data, onUpdate }) => {
             {data.length === 0 ? (
                <tr><td colSpan={2} className="p-4 text-center text-gray-500">Nenhum sensei cadastrado.</td></tr>
             ) : (
-              data.map((sensei) => (
-                <tr key={sensei.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{sensei.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    {/* Placeholder for delete if needed later */}
-                    <span className="text-gray-400 cursor-not-allowed"><Trash2 size={16} /></span>
-                  </td>
-                </tr>
-              ))
+              data.map((sensei) => {
+                const isDeleting = deletingId === sensei.id;
+                return (
+                  <tr key={sensei.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{sensei.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      {isDeleting ? (
+                          <div className="flex justify-end gap-2">
+                              <button 
+                                  onClick={() => confirmDelete(sensei.id)} 
+                                  className="bg-red-100 text-red-600 p-1.5 rounded hover:bg-red-200 transition-colors"
+                                  title="Confirmar exclusão"
+                                  disabled={isSubmitting}
+                              >
+                                  <Check size={16} />
+                              </button>
+                              <button 
+                                  onClick={() => setDeletingId(null)} 
+                                  className="bg-gray-100 text-gray-600 p-1.5 rounded hover:bg-gray-200 transition-colors"
+                                  title="Cancelar"
+                                  disabled={isSubmitting}
+                              >
+                                  <X size={16} />
+                              </button>
+                          </div>
+                      ) : (
+                          <button 
+                              onClick={() => setDeletingId(sensei.id)}
+                              className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                              title="Excluir"
+                              disabled={isSubmitting}
+                          >
+                              <Trash2 size={16} />
+                          </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

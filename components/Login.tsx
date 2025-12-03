@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { storageService } from '../services/storageService';
-import { Shield, Lock, Mail, AlertCircle } from 'lucide-react';
+import { Lock, Mail, AlertCircle } from 'lucide-react';
+import { KarateLogo } from './KarateLogo';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -28,7 +29,7 @@ export const Login: React.FC = () => {
         <div className="bg-red-900 p-8 text-center">
           <div className="flex justify-center mb-4">
             <div className="bg-white p-3 rounded-full bg-opacity-10">
-              <Shield className="text-white w-12 h-12" />
+              <KarateLogo className="text-white" size={48} />
             </div>
           </div>
           <h1 className="text-3xl font-extrabold text-white tracking-wider">KarateFlow</h1>

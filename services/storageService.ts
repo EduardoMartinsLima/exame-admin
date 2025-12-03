@@ -99,14 +99,21 @@ export const storageService = {
     return { error };
   },
 
+  deleteSensei: async (id: string) => {
+    // Database is configured with ON DELETE SET NULL for students referencing this sensei
+    const { error } = await supabase.from('senseis').delete().eq('id', id);
+    if (error) console.error('Error deleting sensei:', JSON.stringify(error));
+    return { error };
+  },
+
   // --- Students ---
   addStudent: async (student: Student) => {
     const dbStudent = {
       id: student.id,
       name: student.name,
-      cpf: student.cpf,
+      cpf: student.cpf || null,
       sex: student.sex,
-      birth_date: student.birthDate,
+      birth_date: student.birthDate || null,
       current_rank: student.currentRank,
       sensei_id: student.senseiId || null
     };
@@ -118,12 +125,12 @@ export const storageService = {
   updateStudent: async (id: string, updates: Partial<Student>) => {
     const dbUpdates: any = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
-    if (updates.cpf !== undefined) dbUpdates.cpf = updates.cpf;
+    if (updates.cpf !== undefined) dbUpdates.cpf = updates.cpf || null;
     if (updates.sex !== undefined) dbUpdates.sex = updates.sex;
-    if (updates.birthDate !== undefined) dbUpdates.birth_date = updates.birthDate;
+    if (updates.birthDate !== undefined) dbUpdates.birth_date = updates.birthDate || null;
     if (updates.currentRank !== undefined) dbUpdates.current_rank = updates.currentRank;
     // Explicitly handle null for unlinking
-    if (updates.senseiId !== undefined) dbUpdates.sensei_id = updates.senseiId;
+    if (updates.senseiId !== undefined) dbUpdates.sensei_id = updates.senseiId || null;
 
     const { error } = await supabase.from('students').update(dbUpdates).eq('id', id);
     if (error) console.error('Error updating student:', JSON.stringify(error));
@@ -141,7 +148,7 @@ export const storageService = {
     const dbStudents = students.map(s => ({
       id: s.id,
       name: s.name,
-      cpf: s.cpf,
+      cpf: s.cpf || null,
       sex: s.sex,
       birth_date: s.birthDate || null, // Allow null dates
       current_rank: s.currentRank,
