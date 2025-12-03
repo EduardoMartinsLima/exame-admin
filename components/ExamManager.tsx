@@ -273,14 +273,14 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
                                 <div className="flex items-center gap-2">
                                      <button 
                                         onClick={(e) => { e.stopPropagation(); handleEdit(exam); }}
-                                        className={`p-1.5 rounded-full transition-colors ${
+                                        className={`p-2 rounded-full transition-colors ${
                                             isEditing 
-                                            ? 'text-orange-600 bg-orange-100 ring-1 ring-orange-200' 
+                                            ? 'text-white bg-orange-500 hover:bg-orange-600 shadow-sm' 
                                             : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
                                         }`}
                                         title="Editar Exame"
                                      >
-                                         <Pencil size={15} />
+                                         <Pencil size={16} />
                                      </button>
                                      {isSelected && <ChevronRight size={16} className="text-red-500" />}
                                 </div>

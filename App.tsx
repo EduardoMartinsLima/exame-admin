@@ -132,14 +132,26 @@ const App: React.FC = () => {
             <KarateLogo className="mr-2" size={24} />
             <span className="font-bold text-lg">KarateFlow</span>
         </div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="focus:outline-none focus:ring-2 focus:ring-red-400 rounded p-1"
+          aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={isMobileMenuOpen}
+          aria-controls="mobile-menu"
+        >
           <Menu />
         </button>
       </div>
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-gray-800 bg-opacity-75 z-30 md:hidden" onClick={() => setIsMobileMenuOpen(false)}>
+        <div 
+          id="mobile-menu"
+          className="fixed inset-0 bg-gray-800 bg-opacity-75 z-30 md:hidden" 
+          onClick={() => setIsMobileMenuOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
            <div className="bg-red-900 w-64 h-full flex flex-col pt-20" onClick={e => e.stopPropagation()}>
               <div className="p-4 space-y-2 flex-1">
                 <NavItem view="students" icon={Users} label="Alunos" />

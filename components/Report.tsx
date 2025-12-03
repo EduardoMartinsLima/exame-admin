@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { AppData, Rank } from '../types';
 import { RANKS } from '../constants';
-import { FileText, Filter, ArrowUpDown, Printer, Users, Trophy, ClipboardCheck } from 'lucide-react';
+import { FileText, Filter, ArrowUpDown, Printer, Users, Trophy, ClipboardCheck, Award } from 'lucide-react';
 
 interface Props {
   data: AppData;
 }
 
 type SortOption = 'rank' | 'grade_desc' | 'grade_asc' | 'name';
-type ReportType = 'results' | 'exam_list' | 'approval_list';
+type ReportType = 'results' | 'exam_list' | 'approval_list' | 'passed_list';
 
 export const Report: React.FC<Props> = ({ data }) => {
   const [reportType, setReportType] = useState<ReportType>('results');
@@ -42,6 +42,10 @@ export const Report: React.FC<Props> = ({ data }) => {
         if (filterExam && item.examId !== filterExam) return false;
         if (filterRank && item.targetRank !== filterRank) return false;
         if (filterSensei && item.studentSenseiId !== filterSensei) return false;
+        
+        // Filter for Passed List
+        if (reportType === 'passed_list' && !item.pass) return false;
+
         return true;
       });
   };
@@ -134,6 +138,17 @@ export const Report: React.FC<Props> = ({ data }) => {
             >
                 <ClipboardCheck size={16} className="mr-2" /> Lista de Aprovação
             </button>
+            <button
+                onClick={() => {
+                    setReportType('passed_list');
+                    setSortBy('name');
+                }}
+                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    reportType === 'passed_list' ? 'bg-white text-red-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                }`}
+            >
+                <Award size={16} className="mr-2" /> Lista de Aprovados
+            </button>
          </div>
          <button 
             onClick={handlePrint}
@@ -223,6 +238,7 @@ export const Report: React.FC<Props> = ({ data }) => {
                          {reportType === 'results' && 'Boletim de Resultados'}
                          {reportType === 'exam_list' && 'Lista de Inscritos'}
                          {reportType === 'approval_list' && 'Lista de Aprovação'}
+                         {reportType === 'passed_list' && 'Lista de Aprovados'}
                      </h3>
                      {selectedExamDetails ? (
                          <div className="mt-2 text-gray-600">
@@ -253,7 +269,7 @@ export const Report: React.FC<Props> = ({ data }) => {
         )}
 
         {/* Table View */}
-        {(reportType === 'results' || (isExamSelectionRequired && filterExam)) && (
+        {(reportType === 'results' || reportType === 'passed_list' || (isExamSelectionRequired && filterExam)) && (
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-100">
@@ -264,6 +280,11 @@ export const Report: React.FC<Props> = ({ data }) => {
                             <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Faixa Atual</th>
                             <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Faixa Pretendida</th>
                             
+                            {/* Passed List Specific */}
+                            {reportType === 'passed_list' && (
+                                <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Data Exame</th>
+                            )}
+
                             {/* Results Specific */}
                             {reportType === 'results' && (
                                 <>
@@ -302,6 +323,13 @@ export const Report: React.FC<Props> = ({ data }) => {
                                 <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-800">
                                     {row.targetRank}
                                 </td>
+
+                                {/* Passed List Columns */}
+                                {reportType === 'passed_list' && (
+                                    <td className="px-4 py-3 text-center text-sm text-gray-700">
+                                        {row.examDate ? new Date(row.examDate).toLocaleDateString() : '-'} <span className="text-xs text-gray-500 ml-1">{row.examTime}</span>
+                                    </td>
+                                )}
 
                                 {/* Results Columns */}
                                 {reportType === 'results' && (
@@ -348,7 +376,7 @@ export const Report: React.FC<Props> = ({ data }) => {
                             </tr>
                         ))}
                         {sortedData.length === 0 && (
-                            <tr><td colSpan={reportType === 'results' ? 6 : (reportType === 'approval_list' ? 5 : 6)} className="p-8 text-center text-gray-500">Nenhum registro encontrado.</td></tr>
+                            <tr><td colSpan={reportType === 'passed_list' ? 5 : (reportType === 'results' ? 6 : (reportType === 'approval_list' ? 5 : 6))} className="p-8 text-center text-gray-500">Nenhum registro encontrado.</td></tr>
                         )}
                     </tbody>
                 </table>
