@@ -15,6 +15,32 @@ const generateId = (): string => {
 export const storageService = {
   generateId,
 
+  // --- AUTHENTICATION ---
+  signIn: async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { data, error };
+  },
+
+  signOut: async () => {
+    const { error } = await supabase.auth.signOut();
+    return { error };
+  },
+
+  getSession: async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session;
+  },
+
+  onAuthStateChange: (callback: (session: any) => void) => {
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      callback(session);
+    });
+    return data.subscription;
+  },
+
   // --- Fetch All Data ---
   getData: async (): Promise<AppData> => {
     try {

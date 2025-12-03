@@ -6,11 +6,17 @@ import { StudentManager } from './components/StudentManager';
 import { ExamManager } from './components/ExamManager';
 import { ExamGrader } from './components/ExamGrader';
 import { Report } from './components/Report';
-import { Menu, Users, Calendar, ClipboardCheck, BarChart2, Shield } from 'lucide-react';
+import { Login } from './components/Login';
+import { Menu, Users, Calendar, ClipboardCheck, BarChart2, Shield, LogOut } from 'lucide-react';
 
 type View = 'senseis' | 'students' | 'exams' | 'grader' | 'reports';
 
 const App: React.FC = () => {
+  // Auth State
+  const [session, setSession] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // App State
   const [currentView, setCurrentView] = useState<View>('students');
   const [data, setData] = useState<AppData>({
     senseis: [],
@@ -18,19 +24,45 @@ const App: React.FC = () => {
     exams: [],
     registrations: []
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Load data on mount
+  // Auth Lifecycle
   useEffect(() => {
-    refreshData();
+    // Check initial session
+    storageService.getSession().then((session) => {
+      setSession(session);
+      setAuthLoading(false);
+      if (session) {
+        refreshData();
+      }
+    });
+
+    // Subscribe to changes
+    const subscription = storageService.onAuthStateChange((session) => {
+      setSession(session);
+      if (session) {
+        refreshData();
+      } else {
+        // Clear data on logout
+        setData({ senseis: [], students: [], exams: [], registrations: [] });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const refreshData = async () => {
-    setIsLoading(true);
+    setIsDataLoading(true);
     const freshData = await storageService.getData();
     setData(freshData);
-    setIsLoading(false);
+    setIsDataLoading(false);
+  };
+
+  const handleLogout = async () => {
+    await storageService.signOut();
   };
 
   const NavItem = ({ view, icon: Icon, label }: { view: View; icon: any; label: string }) => (
@@ -50,6 +82,21 @@ const App: React.FC = () => {
     </button>
   );
 
+  // --- Render Auth Loading ---
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-900"></div>
+      </div>
+    );
+  }
+
+  // --- Render Login Screen ---
+  if (!session) {
+    return <Login />;
+  }
+
+  // --- Render Main App ---
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       {/* Sidebar - Desktop */}
@@ -66,7 +113,14 @@ const App: React.FC = () => {
           <NavItem view="reports" icon={BarChart2} label="Relatórios" />
         </nav>
         <div className="p-4 border-t border-red-800">
-           <p className="text-xs text-red-300 text-center">v1.0.0 - Gestão Dojo</p>
+           <button 
+             onClick={handleLogout}
+             className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-red-950 text-red-200 rounded hover:bg-red-800 transition-colors"
+           >
+             <LogOut size={16} />
+             <span>Sair</span>
+           </button>
+           <p className="text-xs text-red-300 text-center mt-3">v1.0.0 - Gestão Dojo</p>
         </div>
       </aside>
 
@@ -84,12 +138,23 @@ const App: React.FC = () => {
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-gray-800 bg-opacity-75 z-30 md:hidden" onClick={() => setIsMobileMenuOpen(false)}>
-           <div className="bg-red-900 w-64 h-full p-4 space-y-2 pt-20" onClick={e => e.stopPropagation()}>
-              <NavItem view="students" icon={Users} label="Alunos" />
-              <NavItem view="senseis" icon={Shield} label="Senseis" />
-              <NavItem view="exams" icon={Calendar} label="Exames" />
-              <NavItem view="grader" icon={ClipboardCheck} label="Avaliação" />
-              <NavItem view="reports" icon={BarChart2} label="Relatórios" />
+           <div className="bg-red-900 w-64 h-full flex flex-col pt-20" onClick={e => e.stopPropagation()}>
+              <div className="p-4 space-y-2 flex-1">
+                <NavItem view="students" icon={Users} label="Alunos" />
+                <NavItem view="senseis" icon={Shield} label="Senseis" />
+                <NavItem view="exams" icon={Calendar} label="Exames" />
+                <NavItem view="grader" icon={ClipboardCheck} label="Avaliação" />
+                <NavItem view="reports" icon={BarChart2} label="Relatórios" />
+              </div>
+              <div className="p-4 border-t border-red-800 pb-8">
+                 <button 
+                   onClick={handleLogout}
+                   className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-red-950 text-red-200 rounded hover:bg-red-800 transition-colors"
+                 >
+                   <LogOut size={16} />
+                   <span>Sair</span>
+                 </button>
+              </div>
            </div>
         </div>
       )}
@@ -97,7 +162,7 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 overflow-auto md:pt-0 pt-16">
         <div className="p-6 max-w-7xl mx-auto">
-          {isLoading ? (
+          {isDataLoading ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-900"></div>
             </div>
