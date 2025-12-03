@@ -158,7 +158,9 @@ export const Report: React.FC<Props> = ({ data }) => {
                 >
                     <option value="">{isExamSelectionRequired ? 'Selecione um Exame...' : 'Todos os Exames'}</option>
                     {data.exams.map(e => (
-                        <option key={e.id} value={e.id}>{new Date(e.date).toLocaleDateString()} - {e.location}</option>
+                        <option key={e.id} value={e.id}>
+                            {new Date(e.date).toLocaleDateString()} - {e.time} - {e.location}
+                        </option>
                     ))}
                 </select>
              </div>
@@ -224,8 +226,9 @@ export const Report: React.FC<Props> = ({ data }) => {
                      </h3>
                      {selectedExamDetails ? (
                          <div className="mt-2 text-gray-600">
-                             <p className="font-semibold">{new Date(selectedExamDetails.date).toLocaleDateString()} - {selectedExamDetails.location}</p>
-                             <p className="text-sm">Horário: {selectedExamDetails.time}</p>
+                             <p className="font-semibold text-lg">
+                                 {new Date(selectedExamDetails.date).toLocaleDateString()} • {selectedExamDetails.time} • {selectedExamDetails.location}
+                             </p>
                          </div>
                      ) : (
                          <p className="mt-2 text-gray-500 text-sm">Relatório Geral</p>
