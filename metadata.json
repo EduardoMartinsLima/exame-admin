@@ -1,0 +1,5 @@
+{
+  "name": "KarateFlow - Gestão de Exames",
+  "description": "Sistema completo para gestão de alunos, senseis e exames de faixa de Karate, incluindo notas e relatórios.",
+  "requestFramePermissions": []
+}

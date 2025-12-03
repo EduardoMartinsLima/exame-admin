@@ -1,0 +1,348 @@
+import React, { useState } from 'react';
+import { Exam, Student, ExamRegistration, Rank } from '../types';
+import { storageService } from '../services/storageService';
+import { RANKS } from '../constants';
+import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check } from 'lucide-react';
+
+interface Props {
+  exams: Exam[];
+  students: Student[];
+  registrations: ExamRegistration[];
+  onUpdate: () => void;
+}
+
+export const ExamManager: React.FC<Props> = ({ exams, students, registrations, onUpdate }) => {
+  const [form, setForm] = useState({
+    date: '',
+    time: '',
+    location: ''
+  });
+
+  const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [targetRank, setTargetRank] = useState<Rank>('Amarela');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // State for inline delete confirmation
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.date || !form.location) return;
+
+    setIsSubmitting(true);
+    const newExam: Exam = {
+      id: storageService.generateId(),
+      date: form.date,
+      time: form.time,
+      location: form.location
+    };
+
+    await storageService.addExam(newExam);
+    setForm({ date: '', time: '', location: '' });
+    setSelectedExamId(newExam.id); // Auto-select the new exam
+    setIsSubmitting(false);
+    onUpdate();
+  };
+
+  const handleAddParticipant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedExamId || !selectedStudentId) return;
+
+    setIsSubmitting(true);
+    const registration: ExamRegistration = {
+      id: storageService.generateId(),
+      examId: selectedExamId,
+      studentId: selectedStudentId,
+      targetRank: targetRank
+    };
+
+    await storageService.registerStudentToExam(registration);
+    setSelectedStudentId('');
+    setIsSubmitting(false);
+    onUpdate();
+  };
+
+  const confirmDelete = async (regId: string) => {
+    await storageService.removeRegistration(regId);
+    setDeletingId(null);
+    onUpdate();
+  };
+
+  const handleStudentSelect = (studentId: string) => {
+    setSelectedStudentId(studentId);
+    if (!studentId) return;
+
+    // Auto-suggest next rank
+    const student = students.find(s => s.id === studentId);
+    if (student) {
+      const currentIdx = RANKS.indexOf(student.currentRank);
+      if (currentIdx < RANKS.length - 1) {
+        setTargetRank(RANKS[currentIdx + 1]);
+      } else {
+        setTargetRank(student.currentRank);
+      }
+    }
+  };
+
+  // Logic for selected exam
+  const currentExam = exams.find(e => e.id === selectedExamId);
+  const currentRegistrations = registrations.filter(r => r.examId === selectedExamId);
+  
+  // Available students (not yet registered for this exam)
+  const availableStudents = students.filter(s => 
+    !currentRegistrations.some(r => r.studentId === s.id)
+  );
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
+      {/* Left Column: Create & List */}
+      <div className="lg:col-span-1 flex flex-col gap-6 overflow-hidden">
+        
+        {/* Create Exam Form */}
+        <div className="p-5 bg-white rounded-lg shadow-sm border border-gray-200">
+          <h2 className="text-lg font-bold mb-4 text-gray-800 flex items-center">
+            <Calendar className="mr-2" size={20} /> Novo Exame
+          </h2>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 uppercase">Data</label>
+              <input
+                type="date"
+                required
+                value={form.date}
+                onChange={e => setForm({...form, date: e.target.value})}
+                className="mt-1 w-full border border-gray-300 rounded-md p-2 text-sm"
+                disabled={isSubmitting}
+              />
+            </div>
+            <div className="flex gap-3">
+                <div className="flex-1">
+                    <label className="block text-xs font-semibold text-gray-600 uppercase">Horário</label>
+                    <input
+                        type="time"
+                        required
+                        value={form.time}
+                        onChange={e => setForm({...form, time: e.target.value})}
+                        className="mt-1 w-full border border-gray-300 rounded-md p-2 text-sm"
+                        disabled={isSubmitting}
+                    />
+                </div>
+                <div className="flex-1">
+                    <label className="block text-xs font-semibold text-gray-600 uppercase">Local</label>
+                    <input
+                        type="text"
+                        required
+                        placeholder="Dojo"
+                        value={form.location}
+                        onChange={e => setForm({...form, location: e.target.value})}
+                        className="mt-1 w-full border border-gray-300 rounded-md p-2 text-sm"
+                        disabled={isSubmitting}
+                    />
+                </div>
+            </div>
+            <button 
+                type="submit" 
+                className="w-full bg-red-600 text-white py-2 rounded-md hover:bg-red-700 font-medium text-sm transition-colors disabled:opacity-50"
+                disabled={isSubmitting}
+            >
+              Agendar Exame
+            </button>
+          </form>
+        </div>
+
+        {/* Exam List */}
+        <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+          <h3 className="p-4 bg-gray-50 border-b font-semibold text-gray-700">Selecione um Exame</h3>
+          <div className="overflow-y-auto flex-1 p-2 space-y-2">
+            {exams.length === 0 ? (
+                <p className="p-4 text-center text-gray-400 text-sm">Nenhum exame cadastrado.</p>
+            ) : (
+                exams.map(exam => {
+                    const count = registrations.filter(r => r.examId === exam.id).length;
+                    const isSelected = selectedExamId === exam.id;
+                    return (
+                        <div 
+                            key={exam.id} 
+                            onClick={() => setSelectedExamId(exam.id)}
+                            className={`p-3 rounded-md cursor-pointer border transition-all ${
+                                isSelected 
+                                ? 'bg-red-50 border-red-200 shadow-sm ring-1 ring-red-200' 
+                                : 'bg-white border-gray-100 hover:border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className={`font-medium text-sm ${isSelected ? 'text-red-900' : 'text-gray-900'}`}>
+                                        {new Date(exam.date).toLocaleDateString()}
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1 flex items-center">
+                                        <Clock size={12} className="mr-1"/> {exam.time}
+                                        <span className="mx-2">•</span>
+                                        <MapPin size={12} className="mr-1"/> {exam.location}
+                                    </div>
+                                </div>
+                                {isSelected && <ChevronRight size={16} className="text-red-500" />}
+                            </div>
+                            <div className="mt-2 flex items-center text-xs text-gray-500">
+                                <Users size={12} className="mr-1" />
+                                {count} Participantes
+                            </div>
+                        </div>
+                    );
+                })
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column: Manage Participants */}
+      <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+        {selectedExamId && currentExam ? (
+            <>
+                <div className="p-5 border-b bg-gray-50 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                            Gerenciar Participantes
+                        </h2>
+                        <p className="text-sm text-gray-600 mt-1">
+                            {new Date(currentExam.date).toLocaleDateString()} em {currentExam.location}
+                        </p>
+                    </div>
+                    <div className="bg-white px-3 py-1 rounded-full border shadow-sm text-sm font-medium text-gray-700">
+                        Total: {currentRegistrations.length}
+                    </div>
+                </div>
+
+                <div className="p-5 overflow-y-auto flex-1">
+                    {/* Add Form */}
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
+                        <h4 className="text-sm font-bold text-blue-900 mb-3 flex items-center">
+                            <Plus size={16} className="mr-2" /> Adicionar Aluno ao Exame
+                        </h4>
+                        <form onSubmit={handleAddParticipant} className="flex flex-col md:flex-row gap-4 items-end">
+                            <div className="flex-1 w-full">
+                                <label className="block text-xs font-semibold text-blue-800 mb-1">Aluno</label>
+                                <select
+                                    className="w-full border border-blue-200 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={selectedStudentId}
+                                    onChange={e => handleStudentSelect(e.target.value)}
+                                    disabled={isSubmitting}
+                                >
+                                    <option value="">Selecione o aluno...</option>
+                                    {availableStudents.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name} (Atual: {s.currentRank})</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="w-full md:w-48">
+                                <label className="block text-xs font-semibold text-blue-800 mb-1">Faixa Pretendida</label>
+                                <select
+                                    className="w-full border border-blue-200 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={targetRank}
+                                    onChange={e => setTargetRank(e.target.value as Rank)}
+                                    disabled={isSubmitting}
+                                >
+                                    {RANKS.map(r => <option key={r} value={r}>{r}</option>)}
+                                </select>
+                            </div>
+                            <button 
+                                type="submit" 
+                                disabled={!selectedStudentId || isSubmitting}
+                                className="w-full md:w-auto bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                            >
+                                Vincular
+                            </button>
+                        </form>
+                    </div>
+
+                    {/* Table */}
+                    <div className="rounded-lg border border-gray-200 overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aluno</th>
+                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Faixa Atual</th>
+                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Faixa Pretendida</th>
+                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {currentRegistrations.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500 text-sm">
+                                            Nenhum aluno vinculado a este exame. Use o formulário acima para adicionar.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    currentRegistrations.map(reg => {
+                                        const s = students.find(st => st.id === reg.studentId);
+                                        const isDeleting = deletingId === reg.id;
+                                        return (
+                                            <tr key={reg.id} className="hover:bg-gray-50 group">
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    <div className="text-sm font-medium text-gray-900">{s?.name || 'Desconhecido'}</div>
+                                                    <div className="text-xs text-gray-500">{s?.cpf || ''}</div>
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-500">
+                                                    <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
+                                                        {s?.currentRank}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-semibold text-gray-700">
+                                                    {reg.targetRank}
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                                                    {isDeleting ? (
+                                                        <div className="flex justify-end items-center gap-2">
+                                                            <button 
+                                                                type="button"
+                                                                onClick={(e) => { e.stopPropagation(); confirmDelete(reg.id); }}
+                                                                className="bg-red-100 text-red-600 p-1.5 rounded hover:bg-red-200 transition-colors"
+                                                                title="Confirmar exclusão"
+                                                            >
+                                                                <Check size={16} />
+                                                            </button>
+                                                            <button 
+                                                                type="button"
+                                                                onClick={(e) => { e.stopPropagation(); setDeletingId(null); }}
+                                                                className="bg-gray-100 text-gray-600 p-1.5 rounded hover:bg-gray-200 transition-colors"
+                                                                title="Cancelar"
+                                                            >
+                                                                <X size={16} />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              setDeletingId(reg.id);
+                                                            }}
+                                                            className="text-red-500 hover:text-red-700 p-2 rounded-md hover:bg-red-50 transition-colors cursor-pointer"
+                                                            title="Remover do exame"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </>
+        ) : (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-gray-50">
+                <CheckCircle size={48} className="mb-4 opacity-20" />
+                <p className="text-lg font-medium">Nenhum exame selecionado</p>
+                <p className="text-sm">Selecione um exame na lista à esquerda para gerenciar os participantes.</p>
+            </div>
+        )}
+      </div>
+    </div>
+  );
+};
