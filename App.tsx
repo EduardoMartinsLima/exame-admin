@@ -35,7 +35,7 @@ const App: React.FC = () => {
       setSession(session);
       setAuthLoading(false);
       if (session) {
-        refreshData();
+        refreshData(true); // Initial load shows spinner
       }
     });
 
@@ -43,7 +43,7 @@ const App: React.FC = () => {
     const subscription = storageService.onAuthStateChange((session) => {
       setSession(session);
       if (session) {
-        refreshData();
+        refreshData(true); // Login/Auth change shows spinner
       } else {
         // Clear data on logout
         setData({ senseis: [], students: [], exams: [], registrations: [] });
@@ -55,11 +55,12 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const refreshData = async () => {
-    setIsDataLoading(true);
+  // Accepts boolean to decide if global loading spinner should show
+  const refreshData = async (showLoading = false) => {
+    if (showLoading) setIsDataLoading(true);
     const freshData = await storageService.getData();
     setData(freshData);
-    setIsDataLoading(false);
+    if (showLoading) setIsDataLoading(false);
   };
 
   const handleLogout = async () => {
@@ -169,17 +170,17 @@ const App: React.FC = () => {
             </div>
           ) : (
             <>
-              {currentView === 'senseis' && <SenseiManager data={data.senseis} onUpdate={refreshData} />}
-              {currentView === 'students' && <StudentManager students={data.students} senseis={data.senseis} onUpdate={refreshData} />}
+              {currentView === 'senseis' && <SenseiManager data={data.senseis} onUpdate={() => refreshData(false)} />}
+              {currentView === 'students' && <StudentManager students={data.students} senseis={data.senseis} onUpdate={() => refreshData(false)} />}
               {currentView === 'exams' && (
                 <ExamManager 
                   exams={data.exams} 
                   students={data.students} 
                   registrations={data.registrations} 
-                  onUpdate={refreshData} 
+                  onUpdate={() => refreshData(false)} 
                 />
               )}
-              {currentView === 'grader' && <ExamGrader data={data} onUpdate={refreshData} />}
+              {currentView === 'grader' && <ExamGrader data={data} onUpdate={() => refreshData(false)} />}
               {currentView === 'reports' && <Report data={data} />}
             </>
           )}
