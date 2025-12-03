@@ -42,6 +42,7 @@ export interface ExamRegistration {
   targetRank: Rank;
   
   // Results
+  present?: boolean; // New field for attendance
   kihon?: number;
   kata1?: number;
   kata2?: number;

@@ -33,6 +33,14 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
   // Sorting State
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
 
+  // Helper to format date avoiding timezone issues
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-').map(Number);
+    // Create date treating the input as local time (month is 0-indexed)
+    return new Date(year, month - 1, day).toLocaleDateString();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.date || !form.location) return;
@@ -97,7 +105,8 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
       id: storageService.generateId(),
       examId: selectedExamId,
       studentId: selectedStudentId,
-      targetRank: targetRank
+      targetRank: targetRank,
+      present: false
     };
 
     const { error } = await storageService.registerStudentToExam(registration);
@@ -115,6 +124,12 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
   const confirmDelete = async (regId: string) => {
     await storageService.removeRegistration(regId);
     setDeletingId(null);
+    onUpdate();
+  };
+
+  const handleTogglePresence = async (regId: string, currentStatus: boolean | undefined) => {
+    // Optimistic toggle could be implemented, but simple wait is safer
+    await storageService.updateResult(regId, { present: !currentStatus });
     onUpdate();
   };
 
@@ -262,7 +277,7 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
                             <div className="flex justify-between items-start">
                                 <div>
                                     <div className={`font-medium text-sm ${isSelected ? 'text-red-900' : 'text-gray-900'}`}>
-                                        {new Date(exam.date).toLocaleDateString()}
+                                        {formatDate(exam.date)}
                                     </div>
                                     <div className="text-xs text-gray-500 mt-1 flex items-center">
                                         <Clock size={12} className="mr-1"/> {exam.time}
@@ -307,7 +322,7 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
                             Gerenciar Participantes
                         </h2>
                         <p className="text-sm text-gray-600 mt-1">
-                            {new Date(currentExam.date).toLocaleDateString()} em {currentExam.location}
+                            {formatDate(currentExam.date)} em {currentExam.location}
                         </p>
                     </div>
                     <div className="bg-white px-3 py-1 rounded-full border shadow-sm text-sm font-medium text-gray-700">
@@ -395,13 +410,16 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
                                             )}
                                         </div>
                                     </th>
+                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Presença
+                                    </th>
                                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {sortedRegistrations.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500 text-sm">
+                                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500 text-sm">
                                             Nenhum aluno vinculado a este exame. Use o formulário acima para adicionar.
                                         </td>
                                     </tr>
@@ -422,6 +440,15 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-semibold text-gray-700">
                                                     {reg.targetRank}
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-center">
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={!!reg.present}
+                                                        onChange={() => handleTogglePresence(reg.id, reg.present)}
+                                                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                                        title="Marcar presença"
+                                                    />
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
                                                     {isDeleting ? (

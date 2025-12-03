@@ -30,43 +30,61 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
     e.preventDefault();
     if (!form.name) return;
 
-    setIsSubmitting(true);
-    let error;
+    try {
+        setIsSubmitting(true);
+        let error;
 
-    if (editingId) {
-        // Use null for unlinking sensei (empty string from form)
-        const updates: Partial<Student> = {
+        // Sanitize payload
+        const payload: any = {
             name: form.name,
-            cpf: form.cpf,
-            sex: form.sex as any,
-            birthDate: form.birthDate,
-            currentRank: form.currentRank,
-            senseiId: form.senseiId || null
+            sex: form.sex,
+            current_rank: form.currentRank,
+            // Convert empty strings to null for DB
+            cpf: form.cpf ? form.cpf : null,
+            birth_date: form.birthDate ? form.birthDate : null,
+            sensei_id: form.senseiId ? form.senseiId : null
         };
-        const res = await storageService.updateStudent(editingId, updates);
-        error = res.error;
-        if (!error) setEditingId(null);
-    } else {
-        const newStudent: Student = {
-          id: storageService.generateId(),
-          name: form.name,
-          cpf: form.cpf,
-          sex: form.sex as any,
-          birthDate: form.birthDate,
-          currentRank: form.currentRank,
-          senseiId: form.senseiId || null
-        };
-        const res = await storageService.addStudent(newStudent);
-        error = res.error;
-    }
-    
-    setIsSubmitting(false);
+        
+        console.log("Submitting payload:", payload);
 
-    if (error) {
-        alert(`Erro ao salvar aluno: ${error.message || JSON.stringify(error)}`);
-    } else {
-        setForm(INITIAL_FORM);
-        onUpdate();
+        if (editingId) {
+            const res = await storageService.updateStudent(editingId, {
+                name: payload.name,
+                cpf: payload.cpf,
+                sex: payload.sex,
+                birthDate: payload.birth_date,
+                currentRank: payload.current_rank,
+                senseiId: payload.sensei_id
+            });
+            error = res.error;
+            if (!error) setEditingId(null);
+        } else {
+            const newStudent: Student = {
+              id: storageService.generateId(),
+              name: payload.name,
+              cpf: payload.cpf,
+              sex: payload.sex,
+              birthDate: payload.birth_date,
+              currentRank: payload.current_rank,
+              senseiId: payload.sensei_id
+            };
+            const res = await storageService.addStudent(newStudent);
+            error = res.error;
+        }
+        
+        setIsSubmitting(false);
+
+        if (error) {
+            console.error("Operation failed:", error);
+            alert(`Erro ao salvar aluno: ${error.message || JSON.stringify(error)}`);
+        } else {
+            setForm(INITIAL_FORM);
+            onUpdate();
+        }
+    } catch (err: any) {
+        setIsSubmitting(false);
+        console.error("Unexpected error:", err);
+        alert(`Ocorreu um erro inesperado: ${err.message || 'Erro desconhecido'}`);
     }
   };
 
@@ -122,9 +140,30 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
   const parseSex = (sexStr: string): 'M' | 'F' | 'Outro' => {
       if (!sexStr) return 'Outro';
       const s = sexStr.toUpperCase().trim();
-      if (s.startsWith('M')) return 'M';
-      if (s.startsWith('F')) return 'F';
+      if (s.startsWith('M') || s === 'MASCULINO') return 'M';
+      if (s.startsWith('F') || s === 'FEMININO') return 'F';
       return 'Outro';
+  };
+
+  // Robust CSV Line Parser handles quotes
+  const parseCSVLine = (line: string, separator: string): string[] => {
+      const result: string[] = [];
+      let current = '';
+      let inQuote = false;
+      
+      for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+              inQuote = !inQuote;
+          } else if (char === separator && !inQuote) {
+              result.push(current);
+              current = '';
+          } else {
+              current += char;
+          }
+      }
+      result.push(current);
+      return result;
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,35 +186,53 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
         const line = lines[i].trim();
         if (!line) continue;
         
-        // Auto-detect separator (prefer semicolon if present, common in Excel CSVs)
+        // Auto-detect separator
         const separator = line.includes(';') ? ';' : ',';
-        const cols = line.split(separator);
+        const cols = parseCSVLine(line, separator);
         
         // Basic validation: Name is required
         if (cols[0]) {
           const name = clean(cols[0]);
           if (!name) continue;
 
-          // Mapping: Name, CPF, Sex, BirthDate, Rank, SenseiName
-          const senseiName = clean(cols[5]);
+          // Standard Mapping: Name(0), CPF(1), Sex(2), BirthDate(3), Rank(4), SenseiName(5)
+          let cpf = clean(cols[1]);
+          let sexRaw = clean(cols[2]);
+          let birthRaw = clean(cols[3]);
+          let rankRaw = clean(cols[4]);
+          let senseiName = clean(cols[5]);
+
           let matchedSenseiId: string | undefined = undefined;
 
-          // Try to match sensei by name
-          if (senseiName) {
-            const found = senseis.find(s => s.name.trim().toLowerCase() === senseiName.toLowerCase());
-            if (found) matchedSenseiId = found.id;
+          // SMART DETECTION: Check if Sensei is in Column 1 (Index 1) instead of 5
+          // Many users might put Name, Sensei, CPF...
+          const possibleSenseiNameInCol1 = cpf; 
+          const matchedSenseiInCol1 = senseis.find(s => s.name.trim().toLowerCase() === possibleSenseiNameInCol1.toLowerCase());
+
+          if (matchedSenseiInCol1) {
+              // Found a sensei in the CPF column! Switch mapping.
+              matchedSenseiId = matchedSenseiInCol1.id;
+              // Shift columns right
+              cpf = clean(cols[2]);
+              sexRaw = clean(cols[3]);
+              birthRaw = clean(cols[4]);
+              rankRaw = clean(cols[5]);
+          } else {
+              // Try standard mapping match (Col 5)
+              if (senseiName) {
+                const found = senseis.find(s => s.name.trim().toLowerCase() === senseiName.toLowerCase());
+                if (found) matchedSenseiId = found.id;
+              }
           }
 
-          const rawRank = clean(cols[4]);
-          // Find Rank case-insensitive or close match if needed, for now exact match
-          const rank = RANKS.find(r => r.toLowerCase() === rawRank.toLowerCase()) || 'Branca';
+          const rank = RANKS.find(r => r.toLowerCase() === rankRaw.toLowerCase()) || 'Branca';
 
           newStudents.push({
             id: storageService.generateId(),
             name: name,
-            cpf: clean(cols[1]),
-            sex: parseSex(clean(cols[2])),
-            birthDate: parseDate(clean(cols[3])),
+            cpf: cpf,
+            sex: parseSex(sexRaw),
+            birthDate: parseDate(birthRaw),
             currentRank: rank as Rank,
             senseiId: matchedSenseiId || null // Ensure null if undefined
           });
@@ -188,7 +245,6 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
         setIsSubmitting(false);
         
         if (error) {
-            // Robust error display
             const msg = error.message || JSON.stringify(error);
             alert(`Erro ao importar alunos: ${msg}`);
             console.error(error);
@@ -208,10 +264,15 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
 
   const confirmDelete = async (id: string) => {
       setIsSubmitting(true);
-      await storageService.deleteStudent(id);
+      const { error } = await storageService.deleteStudent(id);
       setIsSubmitting(false);
-      setDeletingId(null);
-      onUpdate();
+      
+      if (error) {
+           alert(`Erro ao excluir aluno: ${error.message}`);
+      } else {
+           setDeletingId(null);
+           onUpdate();
+      }
   }
 
   const getSenseiName = (senseiId?: string | null) => {
@@ -241,9 +302,14 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
             <h3 className="font-semibold text-blue-800 mb-2">Importar de CSV</h3>
             <p className="text-sm text-blue-600 mb-4">
-              O arquivo deve ser .csv com as colunas na ordem: <strong>Nome, CPF, Sexo, Data de Nascimento, Graduação, Nome do Sensei</strong>.
-              <br />
-              <span className="text-xs text-blue-500 italic">O Sensei será vinculado automaticamente se o nome corresponder exatamente a um Sensei cadastrado. Suporta separadores vírgula (,) ou ponto-e-vírgula (;). Datas podem ser DD/MM/AAAA ou DD/MM/AA.</span>
+              O arquivo deve ser .csv com as colunas na ordem:<br/>
+              <strong>1. Nome, 2. CPF, 3. Sexo, 4. Data de Nascimento, 5. Graduação, 6. Nome do Sensei</strong>
+              <br/>
+              <span className="text-xs text-blue-500 italic mt-1 block">
+                  *Alternativamente, aceita: <strong>1. Nome, 2. Nome do Sensei, 3. CPF...</strong> se o nome do Sensei for reconhecido.
+                  <br/>
+                  *Suporta separadores vírgula (,) ou ponto-e-vírgula (;). Aspas em nomes são tratadas corretamente.
+              </span>
             </p>
             <input 
               type="file" 

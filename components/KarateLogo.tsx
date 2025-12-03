@@ -30,7 +30,7 @@ export const KarateLogo: React.FC<Props> = ({ size = 24, className = "" }) => {
         stroke="none"
         fontSize="36" 
         fontWeight="900" 
-        fontFamily="'Noto Serif JP', 'Hiragino Mincho ProN', serif"
+        fontFamily="'Noto Serif JP', serif"
       >
         空
       </text>
@@ -45,7 +45,7 @@ export const KarateLogo: React.FC<Props> = ({ size = 24, className = "" }) => {
         stroke="none"
         fontSize="36" 
         fontWeight="900" 
-        fontFamily="'Noto Serif JP', 'Hiragino Mincho ProN', serif"
+        fontFamily="'Noto Serif JP', serif"
       >
         手
       </text>

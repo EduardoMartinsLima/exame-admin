@@ -95,6 +95,13 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
     }));
   };
 
+  // Helper to format date avoiding timezone issues
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString();
+  };
+
   const examRegistrations = data.registrations.filter(r => r.examId === selectedExamId);
   
   // Enhance registrations with student data
@@ -152,7 +159,7 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
                     <option value="">Selecione...</option>
                     {data.exams.map(ex => (
                         <option key={ex.id} value={ex.id}>
-                            {new Date(ex.date).toLocaleDateString()} - {ex.location}
+                            {formatDate(ex.date)} - {ex.location}
                         </option>
                     ))}
                 </select>

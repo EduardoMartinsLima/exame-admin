@@ -72,6 +72,7 @@ export const storageService = {
         examId: r.exam_id,
         studentId: r.student_id,
         targetRank: r.target_rank,
+        present: r.present, // Map presence
         kihon: r.kihon,
         kata1: r.kata1,
         kata2: r.kata2,
@@ -118,13 +119,16 @@ export const storageService = {
       sensei_id: student.senseiId ? student.senseiId : null
     };
     const { error } = await supabase.from('students').insert(dbStudent);
-    if (error) console.error('Error adding student:', JSON.stringify(error));
-    return { error };
+    if (error) {
+        return { error };
+    }
+    return { error: null };
   },
 
   updateStudent: async (id: string, updates: Partial<Student>) => {
     const dbUpdates: any = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
+    // Convert empty string to null specifically for DB constraints
     if (updates.cpf !== undefined) dbUpdates.cpf = updates.cpf ? updates.cpf : null;
     if (updates.sex !== undefined) dbUpdates.sex = updates.sex;
     if (updates.birthDate !== undefined) dbUpdates.birth_date = updates.birthDate ? updates.birthDate : null;
@@ -133,15 +137,19 @@ export const storageService = {
     if (updates.senseiId !== undefined) dbUpdates.sensei_id = updates.senseiId ? updates.senseiId : null;
 
     const { error } = await supabase.from('students').update(dbUpdates).eq('id', id);
-    if (error) console.error('Error updating student:', JSON.stringify(error));
-    return { error };
+    if (error) {
+        return { error };
+    }
+    return { error: null };
   },
 
   deleteStudent: async (id: string) => {
     // Registrations cascade delete due to foreign key constraints
     const { error } = await supabase.from('students').delete().eq('id', id);
-    if (error) console.error('Error deleting student:', JSON.stringify(error));
-    return { error };
+    if (error) {
+        return { error };
+    }
+    return { error: null };
   },
 
   importStudents: async (students: Student[]) => {
@@ -187,8 +195,8 @@ export const storageService = {
       exam_id: registration.examId,
       student_id: registration.studentId,
       target_rank: registration.targetRank,
-      // Init results as null/defaults
-      pass: false
+      pass: false,
+      present: false
     };
     const { error } = await supabase.from('exam_registrations').insert(dbReg);
     if (error) console.error('Error registering student:', JSON.stringify(error));
@@ -203,6 +211,7 @@ export const storageService = {
 
   updateResult: async (regId: string, updates: Partial<ExamRegistration>) => {
     const dbUpdates: any = {};
+    if (updates.present !== undefined) dbUpdates.present = updates.present;
     if (updates.kihon !== undefined) dbUpdates.kihon = updates.kihon;
     if (updates.kata1 !== undefined) dbUpdates.kata1 = updates.kata1;
     if (updates.kata2 !== undefined) dbUpdates.kata2 = updates.kata2;

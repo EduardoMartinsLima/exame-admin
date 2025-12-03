@@ -73,11 +73,12 @@ const App: React.FC = () => {
         setCurrentView(view);
         setIsMobileMenuOpen(false);
       }}
-      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 outline-none focus:ring-2 focus:ring-red-400 ${
         currentView === view 
-          ? 'bg-red-700 text-white' 
-          : 'text-red-100 hover:bg-red-800 hover:text-white'
+          ? 'bg-red-700 text-white shadow-inner transform scale-[0.98]' 
+          : 'text-red-100 hover:bg-red-800 hover:text-white active:bg-red-900 active:scale-95'
       }`}
+      role="menuitem"
     >
       <Icon size={20} />
       <span className="font-medium">{label}</span>
@@ -147,13 +148,16 @@ const App: React.FC = () => {
       {isMobileMenuOpen && (
         <div 
           id="mobile-menu"
-          className="fixed inset-0 bg-gray-800 bg-opacity-75 z-30 md:hidden" 
+          className="fixed inset-0 bg-gray-800 bg-opacity-75 z-30 md:hidden transition-opacity duration-300" 
           onClick={() => setIsMobileMenuOpen(false)}
           role="dialog"
           aria-modal="true"
         >
-           <div className="bg-red-900 w-64 h-full flex flex-col pt-20" onClick={e => e.stopPropagation()}>
-              <div className="p-4 space-y-2 flex-1">
+           <div 
+             className="bg-red-900 w-64 h-full flex flex-col pt-20 shadow-2xl transform transition-transform duration-300 ease-out translate-x-0" 
+             onClick={e => e.stopPropagation()}
+           >
+              <div className="p-4 space-y-2 flex-1" role="menu">
                 <NavItem view="students" icon={Users} label="Alunos" />
                 <NavItem view="senseis" icon={Shield} label="Senseis" />
                 <NavItem view="exams" icon={Calendar} label="Exames" />
@@ -163,7 +167,7 @@ const App: React.FC = () => {
               <div className="p-4 border-t border-red-800 pb-8">
                  <button 
                    onClick={handleLogout}
-                   className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-red-950 text-red-200 rounded hover:bg-red-800 transition-colors"
+                   className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-red-950 text-red-200 rounded hover:bg-red-800 transition-colors active:bg-red-900"
                  >
                    <LogOut size={16} />
                    <span>Sair</span>
