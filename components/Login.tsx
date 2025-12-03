@@ -32,7 +32,7 @@ export const Login: React.FC = () => {
               <KarateLogo className="text-white" size={48} />
             </div>
           </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-wider">KarateFlow</h1>
+          <h1 className="text-3xl font-extrabold text-white tracking-wider">KarateAdmin</h1>
           <p className="text-red-200 mt-2 text-sm">Sistema de Gestão de Exames</p>
         </div>
 

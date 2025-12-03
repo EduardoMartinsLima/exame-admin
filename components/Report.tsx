@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AppData, Rank } from '../types';
 import { RANKS } from '../constants';
-import { FileText, Filter, ArrowUpDown, Printer, Users, Trophy, ClipboardCheck, Award } from 'lucide-react';
+import { FileText, Filter, ArrowUpDown, Printer, Users, Trophy, ClipboardCheck, Award, List } from 'lucide-react';
 import { KarateLogo } from './KarateLogo';
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 }
 
 type SortOption = 'rank' | 'grade_desc' | 'grade_asc' | 'name';
-type ReportType = 'results' | 'exam_list' | 'approval_list' | 'passed_list';
+type ReportType = 'results' | 'exam_list' | 'approval_list' | 'passed_list' | 'student_list';
 
 export const Report: React.FC<Props> = ({ data }) => {
   const [reportType, setReportType] = useState<ReportType>('results');
@@ -88,7 +88,7 @@ export const Report: React.FC<Props> = ({ data }) => {
   const selectedExamDetails = data.exams.find(e => e.id === filterExam);
 
   // Helper to determine if exam selection is required
-  const isExamSelectionRequired = reportType === 'exam_list' || reportType === 'approval_list';
+  const isExamSelectionRequired = reportType === 'exam_list' || reportType === 'approval_list' || reportType === 'student_list';
 
   return (
     <div className="space-y-6">
@@ -150,6 +150,17 @@ export const Report: React.FC<Props> = ({ data }) => {
                 }`}
             >
                 <Users size={16} className="mr-2" /> Inscritos
+            </button>
+            <button
+                onClick={() => {
+                    setReportType('student_list');
+                    setSortBy('name');
+                }}
+                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    reportType === 'student_list' ? 'bg-white text-red-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                }`}
+            >
+                <List size={16} className="mr-2" /> Relação Nominal
             </button>
             <button
                 onClick={() => {
@@ -259,7 +270,7 @@ export const Report: React.FC<Props> = ({ data }) => {
              <div className="flex items-center gap-4 mb-2">
                 <KarateLogo size={64} className="text-red-900" />
                 <div className="text-center">
-                    <h1 className="text-4xl font-extrabold text-red-900 tracking-wider uppercase leading-none">KarateFlow</h1>
+                    <h1 className="text-4xl font-extrabold text-red-900 tracking-wider uppercase leading-none">KarateAdmin</h1>
                     <p className="text-gray-600 text-xs tracking-[0.3em] uppercase mt-1">Gestão de Dojos & Exames</p>
                 </div>
              </div>
@@ -272,6 +283,7 @@ export const Report: React.FC<Props> = ({ data }) => {
                      <h3 className="text-2xl font-bold text-gray-900 flex items-center uppercase tracking-wide">
                          {reportType === 'results' && 'Boletim de Resultados'}
                          {reportType === 'exam_list' && 'Lista de Inscritos'}
+                         {reportType === 'student_list' && 'Relação Nominal de Alunos'}
                          {reportType === 'approval_list' && 'Lista de Aprovação'}
                          {reportType === 'passed_list' && 'Relatório de Aprovados'}
                      </h3>

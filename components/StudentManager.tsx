@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Student, Rank, Sensei } from '../types';
 import { RANKS } from '../constants';
 import { storageService } from '../services/storageService';
-import { Users, Upload, Save, Trash2, Pencil, X, Check } from 'lucide-react';
+import { Users, Upload, Save, Trash2, Pencil, X, Check, Search } from 'lucide-react';
 
 interface Props {
   students: Student[];
@@ -285,14 +285,14 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
 
   return (
     <div className="space-y-6">
-      <div className="p-6 bg-white rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+      <div className="p-4 md:p-6 bg-white rounded-lg shadow-md">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center">
             <Users className="mr-2" /> {editingId ? 'Editar Aluno' : 'Cadastro de Alunos'}
           </h2>
           <button 
             onClick={() => setShowImport(!showImport)}
-            className="flex items-center text-blue-600 hover:text-blue-800 font-medium"
+            className="flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm md:text-base"
           >
             <Upload className="mr-1" size={18} /> Importar Excel (CSV)
           </button>
@@ -320,8 +320,8 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <div className="col-span-1 md:col-span-2 lg:col-span-1">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-1">
             <label className="block text-sm font-medium text-gray-700">Nome Completo *</label>
             <input
               required
@@ -392,13 +392,13 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
               ))}
             </select>
           </div>
-          <div className="flex items-end col-span-1 md:col-span-2 lg:col-span-3 gap-3 justify-end">
+          <div className="flex items-end col-span-1 sm:col-span-2 lg:col-span-3 gap-3 justify-end pt-2">
              {editingId && (
                 <button
                     type="button"
                     onClick={handleCancelEdit}
                     disabled={isSubmitting}
-                    className="bg-gray-200 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-300 flex items-center font-medium disabled:opacity-50"
+                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 flex items-center font-medium disabled:opacity-50 text-sm md:text-base"
                 >
                     <X className="mr-2" size={18} /> Cancelar
                 </button>
@@ -406,7 +406,7 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
              <button
               type="submit"
               disabled={isSubmitting}
-              className={`px-6 py-2 rounded-md text-white flex items-center justify-center font-medium transition-colors disabled:opacity-50 ${editingId ? 'bg-orange-600 hover:bg-orange-700' : 'bg-red-600 hover:bg-red-700'}`}
+              className={`px-6 py-2 rounded-md text-white flex items-center justify-center font-medium transition-colors disabled:opacity-50 text-sm md:text-base w-full sm:w-auto ${editingId ? 'bg-orange-600 hover:bg-orange-700' : 'bg-red-600 hover:bg-red-700'}`}
             >
               {isSubmitting ? (
                   <span>Salvando...</span>
@@ -426,82 +426,160 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
         </form>
       </div>
 
+      {/* List Container */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faixa</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sensei</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPF</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {students.map(student => {
-               const isDeleting = deletingId === student.id;
-               return (
-                <tr key={student.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-200">
-                      {student.currentRank}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getSenseiName(student.senseiId)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.cpf || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end gap-2">
-                      {isDeleting ? (
-                        <>
-                          <button 
-                              onClick={() => confirmDelete(student.id)} 
-                              className="bg-red-100 text-red-600 p-1.5 rounded hover:bg-red-200 transition-colors"
-                              title="Confirmar exclusão"
-                              disabled={isSubmitting}
-                          >
-                              <Check size={16} />
-                          </button>
-                          <button 
-                              onClick={() => setDeletingId(null)} 
-                              className="bg-gray-100 text-gray-600 p-1.5 rounded hover:bg-gray-200 transition-colors"
-                              title="Cancelar"
-                              disabled={isSubmitting}
-                          >
-                              <X size={16} />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button 
-                              onClick={() => handleEdit(student)} 
-                              className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-                              title="Editar"
-                              disabled={isSubmitting}
-                          >
-                              <Pencil size={16} />
-                          </button>
-                          <button 
-                              onClick={() => setDeletingId(student.id)} 
-                              className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                              title="Excluir"
-                              disabled={isSubmitting}
-                          >
-                              <Trash2 size={16} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-            )})}
-            {students.length === 0 && (
-                <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-gray-500">Nenhum aluno cadastrado.</td>
-                </tr>
+        
+        {/* Desktop/Tablet Table View */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faixa</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sensei</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPF</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {students.map(student => {
+                 const isDeleting = deletingId === student.id;
+                 return (
+                  <tr key={student.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-200">
+                        {student.currentRank}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getSenseiName(student.senseiId)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.cpf || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end gap-2">
+                        {isDeleting ? (
+                          <>
+                            <button 
+                                onClick={() => confirmDelete(student.id)} 
+                                className="bg-red-100 text-red-600 p-1.5 rounded hover:bg-red-200 transition-colors"
+                                title="Confirmar exclusão"
+                                disabled={isSubmitting}
+                            >
+                                <Check size={16} />
+                            </button>
+                            <button 
+                                onClick={() => setDeletingId(null)} 
+                                className="bg-gray-100 text-gray-600 p-1.5 rounded hover:bg-gray-200 transition-colors"
+                                title="Cancelar"
+                                disabled={isSubmitting}
+                            >
+                                <X size={16} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button 
+                                onClick={() => handleEdit(student)} 
+                                className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                                title="Editar"
+                                disabled={isSubmitting}
+                            >
+                                <Pencil size={16} />
+                            </button>
+                            <button 
+                                onClick={() => setDeletingId(student.id)} 
+                                className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                                title="Excluir"
+                                disabled={isSubmitting}
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+              )})}
+              {students.length === 0 && (
+                  <tr>
+                      <td colSpan={5} className="px-6 py-10 text-center text-gray-500">Nenhum aluno cadastrado.</td>
+                  </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden">
+            {students.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">Nenhum aluno cadastrado.</div>
+            ) : (
+                <div className="grid grid-cols-1 gap-4 p-4">
+                    {students.map(student => {
+                        const isDeleting = deletingId === student.id;
+                        return (
+                            <div key={student.id} className="bg-white border rounded-lg shadow-sm p-4 space-y-3">
+                                <div className="flex justify-between items-start">
+                                    <h3 className="text-lg font-bold text-gray-900">{student.name}</h3>
+                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-200 whitespace-nowrap">
+                                        {student.currentRank}
+                                    </span>
+                                </div>
+                                
+                                <div className="text-sm text-gray-600 space-y-1">
+                                    <p className="flex justify-between">
+                                        <span className="font-medium text-gray-500">Sensei:</span>
+                                        <span>{getSenseiName(student.senseiId)}</span>
+                                    </p>
+                                    <p className="flex justify-between">
+                                        <span className="font-medium text-gray-500">CPF:</span>
+                                        <span>{student.cpf || '-'}</span>
+                                    </p>
+                                </div>
+
+                                <div className="pt-3 border-t flex justify-end gap-3">
+                                    {isDeleting ? (
+                                        <>
+                                            <span className="text-sm text-red-600 font-medium self-center mr-auto">Confirmar exclusão?</span>
+                                            <button 
+                                                onClick={() => confirmDelete(student.id)} 
+                                                className="bg-red-100 text-red-600 p-2 rounded hover:bg-red-200 transition-colors flex items-center gap-1"
+                                                disabled={isSubmitting}
+                                            >
+                                                <Check size={18} /> <span className="text-xs">Sim</span>
+                                            </button>
+                                            <button 
+                                                onClick={() => setDeletingId(null)} 
+                                                className="bg-gray-100 text-gray-600 p-2 rounded hover:bg-gray-200 transition-colors flex items-center gap-1"
+                                                disabled={isSubmitting}
+                                            >
+                                                <X size={18} /> <span className="text-xs">Não</span>
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button 
+                                                onClick={() => handleEdit(student)} 
+                                                className="flex-1 bg-blue-50 text-blue-700 py-2 rounded border border-blue-200 hover:bg-blue-100 flex items-center justify-center gap-2 text-sm font-medium"
+                                                disabled={isSubmitting}
+                                            >
+                                                <Pencil size={16} /> Editar
+                                            </button>
+                                            <button 
+                                                onClick={() => setDeletingId(student.id)} 
+                                                className="flex-1 bg-red-50 text-red-700 py-2 rounded border border-red-200 hover:bg-red-100 flex items-center justify-center gap-2 text-sm font-medium"
+                                                disabled={isSubmitting}
+                                            >
+                                                <Trash2 size={16} /> Excluir
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             )}
-          </tbody>
-        </table>
+        </div>
       </div>
     </div>
   );

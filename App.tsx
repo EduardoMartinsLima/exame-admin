@@ -106,7 +106,7 @@ const App: React.FC = () => {
       <aside className="hidden md:flex md:w-64 flex-col bg-red-900 shadow-xl z-10">
         <div className="p-6 flex items-center justify-center border-b border-red-800">
            <KarateLogo className="text-white mr-2" size={32} />
-           <h1 className="text-2xl font-extrabold text-white tracking-wider">KarateFlow</h1>
+           <h1 className="text-2xl font-extrabold text-white tracking-wider">KarateAdmin</h1>
         </div>
         <nav className="flex-1 p-4 space-y-2">
           <NavItem view="students" icon={Users} label="Alunos" />
@@ -131,7 +131,7 @@ const App: React.FC = () => {
       <div className="md:hidden fixed top-0 w-full bg-red-900 text-white z-20 flex justify-between items-center p-4 shadow-md">
         <div className="flex items-center">
             <KarateLogo className="mr-2" size={24} />
-            <span className="font-bold text-lg">KarateFlow</span>
+            <span className="font-bold text-lg">KarateAdmin</span>
         </div>
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
