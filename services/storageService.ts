@@ -111,11 +111,11 @@ export const storageService = {
     const dbStudent = {
       id: student.id,
       name: student.name,
-      cpf: student.cpf || null,
+      cpf: student.cpf ? student.cpf : null,
       sex: student.sex,
-      birth_date: student.birthDate || null,
+      birth_date: student.birthDate ? student.birthDate : null,
       current_rank: student.currentRank,
-      sensei_id: student.senseiId || null
+      sensei_id: student.senseiId ? student.senseiId : null
     };
     const { error } = await supabase.from('students').insert(dbStudent);
     if (error) console.error('Error adding student:', JSON.stringify(error));
@@ -125,12 +125,12 @@ export const storageService = {
   updateStudent: async (id: string, updates: Partial<Student>) => {
     const dbUpdates: any = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
-    if (updates.cpf !== undefined) dbUpdates.cpf = updates.cpf || null;
+    if (updates.cpf !== undefined) dbUpdates.cpf = updates.cpf ? updates.cpf : null;
     if (updates.sex !== undefined) dbUpdates.sex = updates.sex;
-    if (updates.birthDate !== undefined) dbUpdates.birth_date = updates.birthDate || null;
+    if (updates.birthDate !== undefined) dbUpdates.birth_date = updates.birthDate ? updates.birthDate : null;
     if (updates.currentRank !== undefined) dbUpdates.current_rank = updates.currentRank;
-    // Explicitly handle null for unlinking
-    if (updates.senseiId !== undefined) dbUpdates.sensei_id = updates.senseiId || null;
+    // Explicitly handle null for unlinking. If empty string is passed, treat as null.
+    if (updates.senseiId !== undefined) dbUpdates.sensei_id = updates.senseiId ? updates.senseiId : null;
 
     const { error } = await supabase.from('students').update(dbUpdates).eq('id', id);
     if (error) console.error('Error updating student:', JSON.stringify(error));
@@ -156,7 +156,7 @@ export const storageService = {
     }));
     const { error } = await supabase.from('students').insert(dbStudents);
     if (error) {
-        console.error('Error importing students:', JSON.stringify(error));
+        // Return the error so the UI can display it
         return { error };
     }
     return { error: null };
@@ -166,6 +166,17 @@ export const storageService = {
   addExam: async (exam: Exam) => {
     const { error } = await supabase.from('exams').insert(exam);
     if (error) console.error('Error adding exam:', JSON.stringify(error));
+    return { error };
+  },
+
+  updateExam: async (id: string, updates: Partial<Exam>) => {
+    const dbUpdates: any = {};
+    if (updates.date !== undefined) dbUpdates.date = updates.date;
+    if (updates.time !== undefined) dbUpdates.time = updates.time;
+    if (updates.location !== undefined) dbUpdates.location = updates.location;
+
+    const { error } = await supabase.from('exams').update(dbUpdates).eq('id', id);
+    if (error) console.error('Error updating exam:', JSON.stringify(error));
     return { error };
   },
 

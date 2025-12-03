@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Exam, Student, ExamRegistration, Rank } from '../types';
 import { storageService } from '../services/storageService';
 import { RANKS } from '../constants';
-import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check, Pencil } from 'lucide-react';
 
 interface Props {
   exams: Exam[];
@@ -19,6 +19,8 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
   });
 
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
+  const [editingExamId, setEditingExamId] = useState<string | null>(null);
+  
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [targetRank, setTargetRank] = useState<Rank>('Amarela');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,18 +33,54 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
     if (!form.date || !form.location) return;
 
     setIsSubmitting(true);
-    const newExam: Exam = {
-      id: storageService.generateId(),
-      date: form.date,
-      time: form.time,
-      location: form.location
-    };
+    let error;
 
-    await storageService.addExam(newExam);
-    setForm({ date: '', time: '', location: '' });
-    setSelectedExamId(newExam.id); // Auto-select the new exam
+    if (editingExamId) {
+        const { error: updateError } = await storageService.updateExam(editingExamId, {
+            date: form.date,
+            time: form.time,
+            location: form.location
+        });
+        error = updateError;
+        if (!error) setEditingExamId(null);
+    } else {
+        const newExam: Exam = {
+          id: storageService.generateId(),
+          date: form.date,
+          time: form.time,
+          location: form.location
+        };
+        const { error: addError } = await storageService.addExam(newExam);
+        error = addError;
+        if (!error) setSelectedExamId(newExam.id); // Auto-select the new exam
+    }
+
     setIsSubmitting(false);
-    onUpdate();
+
+    if (error) {
+        alert('Erro ao salvar exame. Tente novamente.');
+    } else {
+        setForm({ date: '', time: '', location: '' });
+        onUpdate();
+    }
+  };
+
+  const handleEdit = (exam: Exam) => {
+      setEditingExamId(exam.id);
+      setForm({
+          date: exam.date,
+          time: exam.time,
+          location: exam.location
+      });
+      // On mobile, scroll up to the form so the user sees it populated
+      if (window.innerWidth < 1024) {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+  };
+
+  const handleCancelEdit = () => {
+      setEditingExamId(null);
+      setForm({ date: '', time: '', location: '' });
   };
 
   const handleAddParticipant = async (e: React.FormEvent) => {
@@ -57,10 +95,16 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
       targetRank: targetRank
     };
 
-    await storageService.registerStudentToExam(registration);
+    const { error } = await storageService.registerStudentToExam(registration);
+    
     setSelectedStudentId('');
     setIsSubmitting(false);
-    onUpdate();
+
+    if (error) {
+        alert('Erro ao vincular aluno.');
+    } else {
+        onUpdate();
+    }
   };
 
   const confirmDelete = async (regId: string) => {
@@ -96,14 +140,21 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
-      {/* Left Column: Create & List */}
+      {/* Left Column: Create/Edit & List */}
       <div className="lg:col-span-1 flex flex-col gap-6 overflow-hidden">
         
-        {/* Create Exam Form */}
+        {/* Create/Edit Exam Form */}
         <div className="p-5 bg-white rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-lg font-bold mb-4 text-gray-800 flex items-center">
-            <Calendar className="mr-2" size={20} /> Novo Exame
-          </h2>
+          <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center">
+                <Calendar className="mr-2" size={20} /> {editingExamId ? 'Editar Exame' : 'Novo Exame'}
+              </h2>
+              {editingExamId && (
+                  <button onClick={handleCancelEdit} className="text-xs text-red-600 hover:text-red-800 underline">
+                      Cancelar
+                  </button>
+              )}
+          </div>
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-gray-600 uppercase">Data</label>
@@ -143,10 +194,10 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
             </div>
             <button 
                 type="submit" 
-                className="w-full bg-red-600 text-white py-2 rounded-md hover:bg-red-700 font-medium text-sm transition-colors disabled:opacity-50"
+                className={`w-full text-white py-2 rounded-md font-medium text-sm transition-colors disabled:opacity-50 ${editingExamId ? 'bg-orange-600 hover:bg-orange-700' : 'bg-red-600 hover:bg-red-700'}`}
                 disabled={isSubmitting}
             >
-              Agendar Exame
+              {editingExamId ? 'Atualizar Exame' : 'Agendar Exame'}
             </button>
           </form>
         </div>
@@ -161,11 +212,12 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
                 exams.map(exam => {
                     const count = registrations.filter(r => r.examId === exam.id).length;
                     const isSelected = selectedExamId === exam.id;
+                    const isEditing = editingExamId === exam.id;
                     return (
                         <div 
                             key={exam.id} 
                             onClick={() => setSelectedExamId(exam.id)}
-                            className={`p-3 rounded-md cursor-pointer border transition-all ${
+                            className={`p-3 rounded-md cursor-pointer border transition-all relative group ${
                                 isSelected 
                                 ? 'bg-red-50 border-red-200 shadow-sm ring-1 ring-red-200' 
                                 : 'bg-white border-gray-100 hover:border-gray-300 hover:bg-gray-50'
@@ -182,7 +234,20 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
                                         <MapPin size={12} className="mr-1"/> {exam.location}
                                     </div>
                                 </div>
-                                {isSelected && <ChevronRight size={16} className="text-red-500" />}
+                                <div className="flex items-center gap-2">
+                                     <button 
+                                        onClick={(e) => { e.stopPropagation(); handleEdit(exam); }}
+                                        className={`p-1.5 rounded-full transition-colors ${
+                                            isEditing 
+                                            ? 'text-orange-600 bg-orange-100 ring-1 ring-orange-200' 
+                                            : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                                        }`}
+                                        title="Editar Exame"
+                                     >
+                                         <Pencil size={15} />
+                                     </button>
+                                     {isSelected && <ChevronRight size={16} className="text-red-500" />}
+                                </div>
                             </div>
                             <div className="mt-2 flex items-center text-xs text-gray-500">
                                 <Users size={12} className="mr-1" />
