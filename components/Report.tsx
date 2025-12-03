@@ -163,10 +163,10 @@ export const Report: React.FC<Props> = ({ data }) => {
                                 {row.targetRank}
                             </td>
                             <td className="px-2 py-3 text-center text-sm font-bold text-gray-800">
-                                {row.average !== undefined ? row.average.toFixed(2) : '-'}
+                                {row.average != null ? row.average.toFixed(2) : '-'}
                             </td>
                             <td className="px-4 py-3 text-center">
-                                {row.average !== undefined ? (
+                                {row.average != null ? (
                                     <span className={`px-2 py-1 text-xs font-bold rounded-full ${row.pass ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                         {row.pass ? 'APROVADO' : 'REPROVADO'}
                                     </span>

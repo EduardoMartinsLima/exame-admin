@@ -179,9 +179,9 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
                                             <span className={`text-lg font-bold ${
                                                 (item.average ?? 0) >= 6 ? 'text-green-600' : 'text-red-600'
                                             }`}>
-                                                {item.average !== undefined ? item.average.toFixed(2) : '-'}
+                                                {item.average != null ? item.average.toFixed(2) : '-'}
                                             </span>
-                                            {item.average !== undefined && (
+                                            {item.average != null && (
                                                 <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
                                                     (item.average ?? 0) >= 6 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                                                 }`}>
