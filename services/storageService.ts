@@ -96,6 +96,7 @@ export const storageService = {
   addSensei: async (sensei: Sensei) => {
     const { error } = await supabase.from('senseis').insert(sensei);
     if (error) console.error('Error adding sensei:', JSON.stringify(error));
+    return { error };
   },
 
   // --- Students ---
@@ -111,6 +112,7 @@ export const storageService = {
     };
     const { error } = await supabase.from('students').insert(dbStudent);
     if (error) console.error('Error adding student:', JSON.stringify(error));
+    return { error };
   },
 
   updateStudent: async (id: string, updates: Partial<Student>) => {
@@ -120,16 +122,19 @@ export const storageService = {
     if (updates.sex !== undefined) dbUpdates.sex = updates.sex;
     if (updates.birthDate !== undefined) dbUpdates.birth_date = updates.birthDate;
     if (updates.currentRank !== undefined) dbUpdates.current_rank = updates.currentRank;
-    if (updates.senseiId !== undefined) dbUpdates.sensei_id = updates.senseiId || null;
+    // Explicitly handle null for unlinking
+    if (updates.senseiId !== undefined) dbUpdates.sensei_id = updates.senseiId;
 
     const { error } = await supabase.from('students').update(dbUpdates).eq('id', id);
     if (error) console.error('Error updating student:', JSON.stringify(error));
+    return { error };
   },
 
   deleteStudent: async (id: string) => {
     // Registrations cascade delete due to foreign key constraints
     const { error } = await supabase.from('students').delete().eq('id', id);
     if (error) console.error('Error deleting student:', JSON.stringify(error));
+    return { error };
   },
 
   importStudents: async (students: Student[]) => {
@@ -154,6 +159,7 @@ export const storageService = {
   addExam: async (exam: Exam) => {
     const { error } = await supabase.from('exams').insert(exam);
     if (error) console.error('Error adding exam:', JSON.stringify(error));
+    return { error };
   },
 
   // --- Registrations ---
@@ -168,11 +174,13 @@ export const storageService = {
     };
     const { error } = await supabase.from('exam_registrations').insert(dbReg);
     if (error) console.error('Error registering student:', JSON.stringify(error));
+    return { error };
   },
 
   removeRegistration: async (id: string) => {
     const { error } = await supabase.from('exam_registrations').delete().eq('id', id);
     if (error) console.error('Error removing registration:', JSON.stringify(error));
+    return { error };
   },
 
   updateResult: async (regId: string, updates: Partial<ExamRegistration>) => {
@@ -186,5 +194,6 @@ export const storageService = {
 
     const { error } = await supabase.from('exam_registrations').update(dbUpdates).eq('id', regId);
     if (error) console.error('Error updating result:', JSON.stringify(error));
+    return { error };
   }
 };

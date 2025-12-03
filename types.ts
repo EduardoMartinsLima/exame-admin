@@ -25,7 +25,7 @@ export interface Student {
   sex?: 'M' | 'F' | 'Outro';
   birthDate?: string;
   currentRank: Rank;
-  senseiId?: string; // Optional link to a responsible Sensei
+  senseiId?: string | null; // Allow null explicitly
 }
 
 export interface Exam {

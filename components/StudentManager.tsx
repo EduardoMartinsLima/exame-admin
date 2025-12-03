@@ -31,16 +31,21 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
     if (!form.name) return;
 
     setIsSubmitting(true);
+    let error;
+
     if (editingId) {
-        await storageService.updateStudent(editingId, {
+        // Use null for unlinking sensei (empty string from form)
+        const updates: Partial<Student> = {
             name: form.name,
             cpf: form.cpf,
             sex: form.sex as any,
             birthDate: form.birthDate,
             currentRank: form.currentRank,
-            senseiId: form.senseiId || undefined
-        });
-        setEditingId(null);
+            senseiId: form.senseiId || null
+        };
+        const res = await storageService.updateStudent(editingId, updates);
+        error = res.error;
+        if (!error) setEditingId(null);
     } else {
         const newStudent: Student = {
           id: storageService.generateId(),
@@ -49,14 +54,20 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
           sex: form.sex as any,
           birthDate: form.birthDate,
           currentRank: form.currentRank,
-          senseiId: form.senseiId || undefined
+          senseiId: form.senseiId || null
         };
-        await storageService.addStudent(newStudent);
+        const res = await storageService.addStudent(newStudent);
+        error = res.error;
     }
     
     setIsSubmitting(false);
-    setForm(INITIAL_FORM);
-    onUpdate();
+
+    if (error) {
+        alert(`Erro ao salvar aluno: ${error.message || JSON.stringify(error)}`);
+    } else {
+        setForm(INITIAL_FORM);
+        onUpdate();
+    }
   };
 
   const handleEdit = (student: Student) => {
@@ -166,7 +177,7 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
             sex: parseSex(clean(cols[2])),
             birthDate: parseDate(clean(cols[3])),
             currentRank: rank as Rank,
-            senseiId: matchedSenseiId
+            senseiId: matchedSenseiId || null // Ensure null if undefined
           });
         }
       }
@@ -203,7 +214,7 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
       onUpdate();
   }
 
-  const getSenseiName = (senseiId?: string) => {
+  const getSenseiName = (senseiId?: string | null) => {
     if (!senseiId) return '-';
     return senseis.find(s => s.id === senseiId)?.name || '-';
   };
