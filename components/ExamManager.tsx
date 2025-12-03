@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Exam, Student, ExamRegistration, Rank } from '../types';
 import { storageService } from '../services/storageService';
 import { RANKS } from '../constants';
-import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check, Pencil } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check, Pencil, ArrowUpDown } from 'lucide-react';
 
 interface Props {
   exams: Exam[];
@@ -10,6 +10,8 @@ interface Props {
   registrations: ExamRegistration[];
   onUpdate: () => void;
 }
+
+type SortKey = 'name' | 'currentRank' | 'targetRank';
 
 export const ExamManager: React.FC<Props> = ({ exams, students, registrations, onUpdate }) => {
   const [form, setForm] = useState({
@@ -27,6 +29,9 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
   
   // State for inline delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Sorting State
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,6 +134,13 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
     }
   };
 
+  const handleSort = (key: SortKey) => {
+    setSortConfig(current => ({
+        key,
+        direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
   // Logic for selected exam
   const currentExam = exams.find(e => e.id === selectedExamId);
   const currentRegistrations = registrations.filter(r => r.examId === selectedExamId);
@@ -137,6 +149,30 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
   const availableStudents = students.filter(s => 
     !currentRegistrations.some(r => r.studentId === s.id)
   );
+
+  // Sorting Logic
+  const sortedRegistrations = [...currentRegistrations].sort((a, b) => {
+      const studentA = students.find(s => s.id === a.studentId);
+      const studentB = students.find(s => s.id === b.studentId);
+      
+      const nameA = studentA?.name || '';
+      const nameB = studentB?.name || '';
+      const rankAIdx = RANKS.indexOf(studentA?.currentRank || 'Branca');
+      const rankBIdx = RANKS.indexOf(studentB?.currentRank || 'Branca');
+      const targetAIdx = RANKS.indexOf(a.targetRank);
+      const targetBIdx = RANKS.indexOf(b.targetRank);
+
+      let comparison = 0;
+      if (sortConfig.key === 'name') {
+          comparison = nameA.localeCompare(nameB);
+      } else if (sortConfig.key === 'currentRank') {
+          comparison = rankAIdx - rankBIdx;
+      } else if (sortConfig.key === 'targetRank') {
+          comparison = targetAIdx - targetBIdx;
+      }
+
+      return sortConfig.direction === 'asc' ? comparison : -comparison;
+  });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
@@ -326,21 +362,51 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aluno</th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Faixa Atual</th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Faixa Pretendida</th>
+                                    <th 
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                                        onClick={() => handleSort('name')}
+                                    >
+                                        <div className="flex items-center">
+                                            Aluno
+                                            {sortConfig.key === 'name' && (
+                                                <ArrowUpDown size={12} className={`ml-1 ${sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-gray-400'}`} />
+                                            )}
+                                        </div>
+                                    </th>
+                                    <th 
+                                        className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                                        onClick={() => handleSort('currentRank')}
+                                    >
+                                        <div className="flex items-center justify-center">
+                                            Faixa Atual
+                                            {sortConfig.key === 'currentRank' && (
+                                                <ArrowUpDown size={12} className={`ml-1 ${sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-gray-400'}`} />
+                                            )}
+                                        </div>
+                                    </th>
+                                    <th 
+                                        className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                                        onClick={() => handleSort('targetRank')}
+                                    >
+                                        <div className="flex items-center justify-center">
+                                            Faixa Pretendida
+                                            {sortConfig.key === 'targetRank' && (
+                                                <ArrowUpDown size={12} className={`ml-1 ${sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-gray-400'}`} />
+                                            )}
+                                        </div>
+                                    </th>
                                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {currentRegistrations.length === 0 ? (
+                                {sortedRegistrations.length === 0 ? (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-8 text-center text-gray-500 text-sm">
                                             Nenhum aluno vinculado a este exame. Use o formulário acima para adicionar.
                                         </td>
                                     </tr>
                                 ) : (
-                                    currentRegistrations.map(reg => {
+                                    sortedRegistrations.map(reg => {
                                         const s = students.find(st => st.id === reg.studentId);
                                         const isDeleting = deletingId === reg.id;
                                         return (

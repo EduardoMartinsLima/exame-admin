@@ -2,16 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { AppData, ExamRegistration, Rank } from '../types';
 import { storageService } from '../services/storageService';
 import { RANKS } from '../constants';
-import { Trophy, Trash2, Eraser, Filter } from 'lucide-react';
+import { Trophy, Trash2, Filter, ArrowUpDown, Search } from 'lucide-react';
 
 interface Props {
   data: AppData;
   onUpdate: () => void;
 }
 
+type SortKey = 'name' | 'targetRank' | 'average';
+
 export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
   const [selectedExamId, setSelectedExamId] = useState<string>('');
+  
+  // Filters
   const [filterRank, setFilterRank] = useState<string>('');
+  const [filterSensei, setFilterSensei] = useState<string>('');
+  const [filterName, setFilterName] = useState<string>('');
+
+  // Sorting
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ 
+    key: 'name', 
+    direction: 'asc' 
+  });
 
   // Only run once on mount or when data changes
   useEffect(() => {
@@ -63,9 +75,9 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
   };
 
   const handleClearGrades = async (regId: string) => {
-      if (window.confirm('Tem certeza que deseja limpar todas as notas deste aluno?')) {
+      if (window.confirm('Tem certeza que deseja limpar todas as notas deste aluno? O aluno continuará vinculado ao exame.')) {
           await storageService.updateResult(regId, {
-              kihon: null as any, // Cast to any to allow null if strictNullChecks is causing issues, though storageService handles it
+              kihon: null as any,
               kata1: null as any,
               kata2: null as any,
               kumite: null as any,
@@ -76,11 +88,11 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
       }
   };
 
-  const handleRemoveRegistration = async (regId: string) => {
-    if (window.confirm('Tem certeza que deseja remover este aluno deste exame? Todas as notas lançadas serão perdidas.')) {
-        await storageService.removeRegistration(regId);
-        onUpdate();
-    }
+  const handleSort = (key: SortKey) => {
+    setSortConfig(current => ({
+        key,
+        direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
+    }));
   };
 
   const examRegistrations = data.registrations.filter(r => r.examId === selectedExamId);
@@ -92,14 +104,33 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
         ...reg, 
         studentName: student?.name || 'Unknown', 
         currentRank: student?.currentRank,
-        targetRank: reg.targetRank
+        targetRank: reg.targetRank,
+        senseiId: student?.senseiId
     };
   }).filter(item => {
-      if (!filterRank) return true;
-      return item.targetRank === filterRank;
+      // Filter Logic
+      if (filterRank && item.targetRank !== filterRank) return false;
+      if (filterSensei && item.senseiId !== filterSensei) return false;
+      if (filterName && !item.studentName.toLowerCase().includes(filterName.toLowerCase())) return false;
+      return true;
   }).sort((a, b) => {
-      // Sort alphabetically by name to prevent jumping rows on update
-      return a.studentName.localeCompare(b.studentName);
+      // Sort Logic
+      let comparison = 0;
+
+      if (sortConfig.key === 'name') {
+        comparison = a.studentName.localeCompare(b.studentName);
+      } else if (sortConfig.key === 'targetRank') {
+        const rankA = RANKS.indexOf(a.targetRank as Rank);
+        const rankB = RANKS.indexOf(b.targetRank as Rank);
+        comparison = rankA - rankB;
+      } else if (sortConfig.key === 'average') {
+        // Handle nulls always at bottom
+        const avgA = a.average ?? -1;
+        const avgB = b.average ?? -1;
+        comparison = avgA - avgB;
+      }
+
+      return sortConfig.direction === 'asc' ? comparison : -comparison;
   });
 
   return (
@@ -110,11 +141,11 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
         <h2 className="text-xl font-bold mb-4 flex items-center text-gray-800">
             <Trophy className="mr-2" /> Avaliação de Exame
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
                 <label className="block text-sm font-medium text-gray-700">Selecione o Exame</label>
                 <select 
-                    className="mt-1 w-full border border-gray-300 rounded-md p-2"
+                    className="mt-1 w-full border border-gray-300 rounded-md p-2 text-sm"
                     value={selectedExamId}
                     onChange={e => setSelectedExamId(e.target.value)}
                 >
@@ -128,10 +159,39 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 flex items-center">
-                    <Filter size={14} className="mr-1"/> Filtrar por Faixa Pretendida
+                    <Search size={14} className="mr-1"/> Buscar Aluno
+                </label>
+                <input 
+                    type="text"
+                    className="mt-1 w-full border border-gray-300 rounded-md p-2 text-sm placeholder-gray-400"
+                    placeholder="Nome do aluno..."
+                    value={filterName}
+                    onChange={e => setFilterName(e.target.value)}
+                    disabled={!selectedExamId}
+                />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 flex items-center">
+                    <Filter size={14} className="mr-1"/> Filtrar por Sensei
                 </label>
                 <select 
-                    className="mt-1 w-full border border-gray-300 rounded-md p-2"
+                    className="mt-1 w-full border border-gray-300 rounded-md p-2 text-sm"
+                    value={filterSensei}
+                    onChange={e => setFilterSensei(e.target.value)}
+                    disabled={!selectedExamId}
+                >
+                    <option value="">Todos os Senseis</option>
+                    {data.senseis.sort((a,b) => a.name.localeCompare(b.name)).map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                </select>
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 flex items-center">
+                    <Filter size={14} className="mr-1"/> Filtrar por Faixa
+                </label>
+                <select 
+                    className="mt-1 w-full border border-gray-300 rounded-md p-2 text-sm"
                     value={filterRank}
                     onChange={e => setFilterRank(e.target.value)}
                     disabled={!selectedExamId}
@@ -151,7 +211,7 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
                 <div>
                     <h3 className="font-bold text-gray-800">Notas e Resultados</h3>
                     <p className="text-sm text-gray-500 mt-1">
-                        Preencha as notas abaixo. A média é calculada automaticamente considerando apenas notas preenchidas (diferentes de zero).
+                        Preencha as notas abaixo. A média é calculada automaticamente.
                     </p>
                 </div>
                 <div className="text-sm text-gray-600 bg-white px-3 py-1 rounded border">
@@ -162,18 +222,43 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-100">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Aluno</th>
+                            <th 
+                                className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-200 select-none"
+                                onClick={() => handleSort('name')}
+                            >
+                                <div className="flex items-center">
+                                    Aluno
+                                    {sortConfig.key === 'name' && <ArrowUpDown size={12} className="ml-1 text-red-600" />}
+                                </div>
+                            </th>
+                            <th 
+                                className="px-2 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-200 select-none"
+                                onClick={() => handleSort('targetRank')}
+                            >
+                                <div className="flex items-center justify-center">
+                                    Faixa Pretendida
+                                    {sortConfig.key === 'targetRank' && <ArrowUpDown size={12} className="ml-1 text-red-600" />}
+                                </div>
+                            </th>
                             <th className="px-2 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider w-24">Kihon</th>
                             <th className="px-2 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider w-24">Kata 1</th>
                             <th className="px-2 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider w-24">Kata 2</th>
                             <th className="px-2 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider w-24">Kumite</th>
-                            <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Média Final</th>
+                            <th 
+                                className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-200 select-none"
+                                onClick={() => handleSort('average')}
+                            >
+                                <div className="flex items-center justify-center">
+                                    Média Final
+                                    {sortConfig.key === 'average' && <ArrowUpDown size={12} className="ml-1 text-red-600" />}
+                                </div>
+                            </th>
                             <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider w-20">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {gradedList.length === 0 ? (
-                            <tr><td colSpan={7} className="p-8 text-center text-gray-500">Nenhum aluno encontrado com os filtros selecionados.</td></tr>
+                            <tr><td colSpan={8} className="p-8 text-center text-gray-500">Nenhum aluno encontrado com os filtros selecionados.</td></tr>
                         ) : (
                             gradedList.map(item => (
                                 <tr key={item.id} className="hover:bg-gray-50 transition-colors">
@@ -181,9 +266,14 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
                                         <div className="flex flex-col">
                                             <span>{item.studentName}</span>
                                             <span className="text-xs text-gray-500 font-normal">
-                                                Faixa Atual: {item.currentRank} <span className="mx-1">→</span> <span className="font-bold text-red-800">{item.targetRank}</span>
+                                                Faixa Atual: {item.currentRank}
                                             </span>
                                         </div>
+                                    </td>
+                                    <td className="px-2 py-4 text-center">
+                                         <span className="px-2 py-1 bg-red-50 text-red-800 text-xs font-bold rounded-full border border-red-100">
+                                            {item.targetRank}
+                                         </span>
                                     </td>
                                     <td className="px-2 py-2">
                                         <input 
@@ -244,15 +334,8 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
                                     <td className="px-4 py-4 text-center whitespace-nowrap">
                                         <button 
                                             onClick={() => handleClearGrades(item.id)}
-                                            className="text-gray-400 hover:text-orange-600 p-2 rounded-full hover:bg-orange-50 transition-colors mr-1"
-                                            title="Limpar Notas"
-                                        >
-                                            <Eraser size={16} />
-                                        </button>
-                                        <button 
-                                            onClick={() => handleRemoveRegistration(item.id)}
                                             className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors"
-                                            title="Remover do exame"
+                                            title="Limpar Notas"
                                         >
                                             <Trash2 size={16} />
                                         </button>
