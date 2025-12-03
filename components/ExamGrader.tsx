@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppData, ExamRegistration } from '../types';
 import { storageService } from '../services/storageService';
-import { Trophy, Trash2, Check } from 'lucide-react';
+import { Trophy, Trash2 } from 'lucide-react';
 
 interface Props {
   data: AppData;
@@ -21,15 +21,17 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
   const handleGradeUpdate = async (regId: string, field: keyof ExamRegistration, value: string) => {
     const numValue = parseFloat(value);
     
-    // Only update if it's a valid number or empty string
+    // Allow empty string to clear the value (set to null/undefined)
     if (isNaN(numValue) && value !== '') return;
     
     const currentReg = data.registrations.find(r => r.id === regId);
     if (!currentReg) return;
 
-    // Create updates object
-    const updates: Partial<ExamRegistration> = { 
-        [field]: value === '' ? undefined : numValue 
+    // Use null for empty string to clear value in DB
+    const updateValue = value === '' ? null : numValue;
+
+    const updates: any = { 
+        [field]: updateValue 
     };
 
     // Calculate Average automatically based on merged state
@@ -133,16 +135,19 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
                                         </div>
                                     </td>
                                     <td className="px-2 py-2">
-                                        <input type="number" step="0.1" min="0" max="10"
+                                        <input 
+                                            key={`${item.id}-kihon-${item.kihon}`}
+                                            type="number" step="0.1" min="0" max="10"
                                             className="w-full text-center border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-shadow"
                                             placeholder="0.0"
-                                            value={item.kihon ?? ''}
-                                            onBlur={(e) => handleGradeUpdate(item.id, 'kihon', e.target.value)}
                                             defaultValue={item.kihon ?? ''}
+                                            onBlur={(e) => handleGradeUpdate(item.id, 'kihon', e.target.value)}
                                         />
                                     </td>
                                     <td className="px-2 py-2">
-                                        <input type="number" step="0.1" min="0" max="10"
+                                        <input 
+                                            key={`${item.id}-kata1-${item.kata1}`}
+                                            type="number" step="0.1" min="0" max="10"
                                             className="w-full text-center border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-shadow"
                                             placeholder="0.0"
                                             defaultValue={item.kata1 ?? ''}
@@ -150,7 +155,9 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
                                         />
                                     </td>
                                     <td className="px-2 py-2">
-                                        <input type="number" step="0.1" min="0" max="10"
+                                        <input 
+                                            key={`${item.id}-kata2-${item.kata2}`}
+                                            type="number" step="0.1" min="0" max="10"
                                             className="w-full text-center border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-shadow"
                                             placeholder="0.0"
                                             defaultValue={item.kata2 ?? ''}
@@ -158,7 +165,9 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
                                         />
                                     </td>
                                     <td className="px-2 py-2">
-                                        <input type="number" step="0.1" min="0" max="10"
+                                        <input 
+                                            key={`${item.id}-kumite-${item.kumite}`}
+                                            type="number" step="0.1" min="0" max="10"
                                             className="w-full text-center border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-shadow"
                                             placeholder="0.0"
                                             defaultValue={item.kumite ?? ''}
