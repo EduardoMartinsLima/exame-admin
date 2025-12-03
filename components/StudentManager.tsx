@@ -89,7 +89,19 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
             // Assume day, month, year
             const day = parts[0].padStart(2, '0');
             const month = parts[1].padStart(2, '0');
-            const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+            let year = parts[2];
+            
+            // Handle 2 digit years (e.g. 90 -> 1990, 15 -> 2015)
+            if (year.length === 2) {
+                const yearNum = parseInt(year);
+                // Pivot at 30: 00-29 -> 2000-2029, 30-99 -> 1930-1999
+                if (yearNum < 30) {
+                    year = `20${year}`;
+                } else {
+                    year = `19${year}`;
+                }
+            }
+            
             return `${year}-${month}-${day}`;
         }
     }
@@ -165,7 +177,9 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
         setIsSubmitting(false);
         
         if (error) {
-            alert(`Erro ao importar alunos: ${error.message || 'Verifique o formato dos dados.'}`);
+            // Robust error display
+            const msg = error.message || JSON.stringify(error);
+            alert(`Erro ao importar alunos: ${msg}`);
             console.error(error);
         } else {
             onUpdate();
@@ -218,7 +232,7 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
             <p className="text-sm text-blue-600 mb-4">
               O arquivo deve ser .csv com as colunas na ordem: <strong>Nome, CPF, Sexo, Data de Nascimento, Graduação, Nome do Sensei</strong>.
               <br />
-              <span className="text-xs text-blue-500 italic">O Sensei será vinculado automaticamente se o nome corresponder exatamente a um Sensei cadastrado. Suporta separadores vírgula (,) ou ponto-e-vírgula (;). Datas podem ser DD/MM/AAAA.</span>
+              <span className="text-xs text-blue-500 italic">O Sensei será vinculado automaticamente se o nome corresponder exatamente a um Sensei cadastrado. Suporta separadores vírgula (,) ou ponto-e-vírgula (;). Datas podem ser DD/MM/AAAA ou DD/MM/AA.</span>
             </p>
             <input 
               type="file" 
