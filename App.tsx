@@ -8,7 +8,7 @@ import { ExamGrader } from './components/ExamGrader';
 import { Report } from './components/Report';
 import { Login } from './components/Login';
 import { KarateLogo } from './components/KarateLogo';
-import { Menu, Users, Calendar, ClipboardCheck, BarChart2, Shield, LogOut } from 'lucide-react';
+import { Menu, Users, Calendar, ClipboardCheck, BarChart2, Shield, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 
 type View = 'senseis' | 'students' | 'exams' | 'grader' | 'reports';
 
@@ -27,6 +27,9 @@ const App: React.FC = () => {
   });
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Sidebar State (Default to collapsed on smaller screens if desired, currently false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Auth Lifecycle
   useEffect(() => {
@@ -73,15 +76,18 @@ const App: React.FC = () => {
         setCurrentView(view);
         setIsMobileMenuOpen(false);
       }}
-      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 outline-none focus:ring-2 focus:ring-red-400 ${
+      className={`w-full flex items-center px-4 py-3 rounded-lg transition-all duration-200 outline-none focus:ring-2 focus:ring-red-400 ${
+        isSidebarCollapsed ? 'justify-center' : 'space-x-3'
+      } ${
         currentView === view 
           ? 'bg-red-700 text-white shadow-inner transform scale-[0.98]' 
           : 'text-red-100 hover:bg-red-800 hover:text-white active:bg-red-900 active:scale-95'
       }`}
       role="menuitem"
+      title={isSidebarCollapsed ? label : ''}
     >
-      <Icon size={20} />
-      <span className="font-medium">{label}</span>
+      <Icon size={20} className="flex-shrink-0" />
+      {!isSidebarCollapsed && <span className="font-medium whitespace-nowrap overflow-hidden">{label}</span>}
     </button>
   );
 
@@ -102,28 +108,58 @@ const App: React.FC = () => {
   // --- Render Main App ---
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex md:w-64 flex-col bg-red-900 shadow-xl z-10">
-        <div className="p-6 flex items-center justify-center border-b border-red-800">
-           <KarateLogo className="text-white mr-2" size={32} />
-           <h1 className="text-2xl font-extrabold text-white tracking-wider">KarateAdmin</h1>
+      {/* Sidebar - Desktop (Collapsible) */}
+      <aside 
+        className={`hidden md:flex flex-col bg-red-900 shadow-xl z-10 transition-all duration-300 ease-in-out ${
+            isSidebarCollapsed ? 'w-20' : 'w-64'
+        }`}
+      >
+        {/* Header with Logo and Toggle Button */}
+        <div className={`p-4 flex border-b border-red-800 transition-all duration-300 ${
+            isSidebarCollapsed ? 'flex-col items-center gap-4 py-6' : 'flex-row items-center justify-between'
+        }`}>
+           <div className="flex items-center overflow-hidden">
+               <KarateLogo className="text-white flex-shrink-0" size={32} />
+               {!isSidebarCollapsed && (
+                 <h1 className="ml-2 text-xl font-extrabold text-white tracking-wider truncate">KarateAdmin</h1>
+               )}
+           </div>
+
+           {/* Collapse Toggle Moved Here */}
+           <button 
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className={`p-1 text-red-300 hover:text-white hover:bg-red-800 rounded transition-colors ${
+                  isSidebarCollapsed ? '' : 'ml-2'
+              }`}
+              title={isSidebarCollapsed ? "Expandir Menu" : "Recolher Menu"}
+           >
+              {isSidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+           </button>
         </div>
-        <nav className="flex-1 p-4 space-y-2">
+        
+        <nav className="flex-1 p-3 space-y-2 overflow-y-auto overflow-x-hidden">
           <NavItem view="students" icon={Users} label="Alunos" />
           <NavItem view="senseis" icon={Shield} label="Senseis" />
           <NavItem view="exams" icon={Calendar} label="Exames" />
           <NavItem view="grader" icon={ClipboardCheck} label="Avaliação" />
           <NavItem view="reports" icon={BarChart2} label="Relatórios" />
         </nav>
-        <div className="p-4 border-t border-red-800">
+
+        <div className="p-3 border-t border-red-800">
            <button 
              onClick={handleLogout}
-             className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-red-950 text-red-200 rounded hover:bg-red-800 transition-colors"
+             className={`w-full flex items-center px-4 py-2 bg-red-950 text-red-200 rounded hover:bg-red-800 transition-colors ${
+                 isSidebarCollapsed ? 'justify-center' : 'justify-center space-x-2'
+             }`}
+             title="Sair"
            >
              <LogOut size={16} />
-             <span>Sair</span>
+             {!isSidebarCollapsed && <span>Sair</span>}
            </button>
-           <p className="text-xs text-red-300 text-center mt-3">v1.0.0 - Gestão Dojo</p>
+           
+           {!isSidebarCollapsed && (
+             <p className="text-xs text-red-300 text-center mt-3 truncate">v1.0.0</p>
+           )}
         </div>
       </aside>
 
@@ -178,8 +214,8 @@ const App: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto md:pt-0 pt-16">
-        <div className="p-6 max-w-7xl mx-auto">
+      <main className="flex-1 overflow-auto md:pt-0 pt-16 transition-all duration-300">
+        <div className="p-4 md:p-6 max-w-7xl mx-auto">
           {isDataLoading ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-900"></div>

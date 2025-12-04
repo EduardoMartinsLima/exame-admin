@@ -157,9 +157,10 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
   const handleClearAllGrades = async () => {
     if (!selectedExamId) return;
 
+    // Filter registrations for this exam that have ANY grade data
     const gradedRegs = data.registrations.filter(r => 
         r.examId === selectedExamId && 
-        (r.average != null || r.pass === true || r.kihon != null || r.kata1 != null)
+        (r.average != null || r.pass === true || r.kihon != null || r.kata1 != null || r.kata2 != null || r.kumite != null)
     );
 
     if (gradedRegs.length === 0) {
@@ -195,12 +196,13 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
         );
 
         await Promise.all(updates);
-        setEdits({}); // Clear all local edits
+        setEdits({}); // Clear all local edits after sync
         onUpdate();
         alert('Todas as notas do exame foram limpas.');
     } catch (err) {
         console.error("Error clearing all grades:", err);
         alert("Ocorreu um erro ao tentar limpar as notas.");
+        onUpdate(); // Re-fetch to ensure consistency
     }
   };
 
@@ -209,13 +211,6 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
         key,
         direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
     }));
-  };
-
-  // Helper to format date avoiding timezone issues
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '';
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day).toLocaleDateString();
   };
 
   const examRegistrations = data.registrations.filter(r => r.examId === selectedExamId);
@@ -262,6 +257,13 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
 
       return sortConfig.direction === 'asc' ? comparison : -comparison;
   });
+
+  // Helper to format date avoiding timezone issues
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString();
+  };
 
   return (
     <div className="space-y-6 pb-20 md:pb-0">
@@ -364,7 +366,7 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
 
       {selectedExamId && (
         <>
-            {/* Desktop Table View (Hidden on Mobile/Tablet) */}
+            {/* Desktop Table View (Hidden on Mobile/Tablet - Now hidden up to lg for tablet cards) */}
             <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                     <div>
@@ -532,7 +534,7 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
                             {/* Header: Name and Ranks */}
                             <div className="flex justify-between items-start mb-4 border-b pb-3">
                                 <div>
-                                    <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{item.studentName}</h3>
+                                    <h3 className="text-base font-bold text-gray-900 line-clamp-1">{item.studentName}</h3>
                                     <p className="text-xs text-gray-500">Atual: <span className="font-medium">{item.currentRank}</span></p>
                                 </div>
                                 <span className="px-3 py-1 bg-red-50 text-red-800 text-xs font-bold rounded-full border border-red-100 whitespace-nowrap">
