@@ -10,7 +10,7 @@ interface Props {
 }
 
 type SortOption = 'rank' | 'grade_desc' | 'grade_asc' | 'name';
-type ReportType = 'results' | 'exam_list' | 'approval_list' | 'passed_list' | 'student_list' | 'exam_sheets';
+type ReportType = 'results' | 'exam_list' | 'approval_list' | 'student_list' | 'exam_sheets';
 
 export const Report: React.FC<Props> = ({ data }) => {
   const [reportType, setReportType] = useState<ReportType>('results');
@@ -55,9 +55,6 @@ export const Report: React.FC<Props> = ({ data }) => {
         if (filterExam && item.examId !== filterExam) return false;
         if (filterRank && item.targetRank !== filterRank) return false;
         if (filterSensei && item.studentSenseiId !== filterSensei) return false;
-        
-        // Filter for Passed List
-        if (reportType === 'passed_list' && !item.pass) return false;
 
         return true;
       });
@@ -284,17 +281,6 @@ export const Report: React.FC<Props> = ({ data }) => {
             </button>
             <button
                 onClick={() => {
-                    setReportType('passed_list');
-                    setSortBy('name');
-                }}
-                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    reportType === 'passed_list' ? 'bg-white text-red-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                }`}
-            >
-                <Award size={16} className="mr-2" /> Aprovados
-            </button>
-            <button
-                onClick={() => {
                     setReportType('exam_sheets');
                     setSortBy('name');
                 }}
@@ -438,7 +424,6 @@ export const Report: React.FC<Props> = ({ data }) => {
                          {reportType === 'exam_list' && 'Lista de Inscritos'}
                          {reportType === 'student_list' && 'Relação Nominal de Alunos'}
                          {reportType === 'approval_list' && 'Lista de Aprovação'}
-                         {reportType === 'passed_list' && 'Relatório de Aprovados'}
                          {reportType === 'exam_sheets' && 'Fichas de Exame'}
                      </h3>
                      {selectedExamDetails ? (
@@ -500,7 +485,7 @@ export const Report: React.FC<Props> = ({ data }) => {
         )}
 
         {/* Table View (Other Reports) */}
-        {reportType !== 'exam_sheets' && (reportType === 'results' || reportType === 'passed_list' || (isExamSelectionRequired && filterExam)) && (
+        {reportType !== 'exam_sheets' && (reportType === 'results' || (isExamSelectionRequired && filterExam)) && (
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-red-900 text-white print:bg-gray-100 print:text-black">
@@ -511,11 +496,6 @@ export const Report: React.FC<Props> = ({ data }) => {
                             <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Faixa Atual</th>
                             <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Faixa Pretendida</th>
                             
-                            {/* Passed List Specific */}
-                            {reportType === 'passed_list' && (
-                                <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Data Exame</th>
-                            )}
-
                             {/* Results Specific */}
                             {reportType === 'results' && (
                                 <>
@@ -556,13 +536,6 @@ export const Report: React.FC<Props> = ({ data }) => {
                                 <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-800 border-b border-gray-100 print:border-gray-300">
                                     {row.targetRank}
                                 </td>
-
-                                {/* Passed List Columns */}
-                                {reportType === 'passed_list' && (
-                                    <td className="px-4 py-3 text-center text-sm text-gray-700 border-b border-gray-100 print:border-gray-300">
-                                        {formatDate(row.examDate)} <span className="text-xs text-gray-500 ml-1 print:hidden">{row.examTime}</span>
-                                    </td>
-                                )}
 
                                 {/* Results Columns */}
                                 {reportType === 'results' && (
