@@ -25,7 +25,7 @@ export interface Student {
   sex?: 'M' | 'F' | 'Outro';
   birthDate?: string;
   currentRank: Rank;
-  senseiId?: string | null; // Allow null explicitly
+  senseiId?: string | null;
 }
 
 export interface Exam {
@@ -42,12 +42,12 @@ export interface ExamRegistration {
   targetRank: Rank;
   
   // Results
-  present?: boolean; // New field for attendance
-  kihon?: number;
-  kata1?: number;
-  kata2?: number;
-  kumite?: number;
-  average?: number;
+  present?: boolean;
+  kihon?: number | null;
+  kata1?: number | null;
+  kata2?: number | null;
+  kumite?: number | null;
+  average?: number | null;
   pass?: boolean;
 }
 

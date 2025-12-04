@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
-import { Exam, Student, ExamRegistration, Rank } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Exam, Student, ExamRegistration, Rank, Sensei } from '../types';
 import { storageService } from '../services/storageService';
 import { RANKS } from '../constants';
-import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check, Pencil, ArrowUpDown, CheckSquare } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check, Pencil, ArrowUpDown, CheckSquare, FileText } from 'lucide-react';
+import { ExamSheet } from './ExamSheet';
 
 interface Props {
   exams: Exam[];
   students: Student[];
   registrations: ExamRegistration[];
+  senseis: Sensei[];
   onUpdate: () => void;
 }
 
 type SortKey = 'name' | 'currentRank' | 'targetRank';
 
-export const ExamManager: React.FC<Props> = ({ exams, students, registrations, onUpdate }) => {
+export const ExamManager: React.FC<Props> = ({ exams, students, registrations, senseis, onUpdate }) => {
   const [form, setForm] = useState({
     date: '',
     time: '',
@@ -33,12 +35,97 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
   // Sorting State
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
 
+  // PDF Generation State
+  const [pdfTarget, setPdfTarget] = useState<{
+      student: Student;
+      registration: ExamRegistration;
+      exam: Exam;
+      senseiName: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (pdfTarget) {
+        // Allow DOM to render the hidden sheet
+        setTimeout(() => {
+            generatePDF();
+        }, 500);
+    }
+  }, [pdfTarget]);
+
+  const generatePDF = async () => {
+    if (!pdfTarget) return;
+
+    const element = document.getElementById('hidden-exam-sheet-content');
+    if (!element) return;
+
+    const html2pdf = (window as any).html2pdf;
+    if (!html2pdf) {
+        alert('Biblioteca de PDF não carregada.');
+        setPdfTarget(null);
+        return;
+    }
+
+    const opt = {
+      margin: 0,
+      filename: `ficha_${pdfTarget.student.name.replace(/\s+/g, '_')}_${pdfTarget.exam.date}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+
+    try {
+        await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+        console.error(err);
+        alert('Erro ao gerar PDF');
+    } finally {
+        setPdfTarget(null);
+    }
+  };
+
+  const handleDownloadPDF = (reg: ExamRegistration) => {
+      const student = students.find(s => s.id === reg.studentId);
+      const exam = exams.find(e => e.id === reg.examId);
+      if (!student || !exam) return;
+
+      const sensei = senseis.find(s => s.id === student.senseiId);
+      
+      setPdfTarget({
+          student,
+          registration: reg,
+          exam,
+          senseiName: sensei?.name || '-'
+      });
+  };
+
   // Helper to format date avoiding timezone issues
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const [year, month, day] = dateString.split('-').map(Number);
     // Create date treating the input as local time (month is 0-indexed)
     return new Date(year, month - 1, day).toLocaleDateString();
+  };
+
+  const getInitials = (name: string) => {
+    return name
+        .split(' ')
+        .map(n => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase();
+  };
+
+  const getRankBadgeStyle = (rank: string) => {
+    const r = rank.toLowerCase();
+    if (r.includes('branca')) return 'bg-gray-100 text-gray-800 border-gray-200';
+    if (r.includes('amarela')) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    if (r.includes('vermelha')) return 'bg-red-100 text-red-800 border-red-200';
+    if (r.includes('laranja')) return 'bg-orange-100 text-orange-800 border-orange-200';
+    if (r.includes('verde')) return 'bg-green-100 text-green-800 border-green-200';
+    if (r.includes('roxa')) return 'bg-purple-100 text-purple-800 border-purple-200';
+    if (r.includes('marrom')) return 'bg-amber-900 text-amber-100 border-amber-800';
+    if (r.includes('preta')) return 'bg-gray-900 text-white border-gray-700';
+    return 'bg-blue-100 text-blue-800 border-blue-200';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -219,12 +306,40 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-8rem)]">
+      {/* Styles for PDF Generation */}
+      <style>{`
+         .exam-sheet-page {
+             width: 297mm; 
+             height: 210mm;
+             margin: 0;
+             background-color: white;
+             display: block; 
+             overflow: hidden;
+             box-sizing: border-box; 
+             padding: 5mm; 
+        }
+      `}</style>
+
+      {/* Hidden container for PDF generation */}
+      <div id="hidden-exam-sheet" className="fixed top-0 left-0 -z-50 invisible">
+        {pdfTarget && (
+            <div id="hidden-exam-sheet-content" className="exam-sheet-page">
+                <ExamSheet 
+                    student={pdfTarget.student}
+                    exam={pdfTarget.exam}
+                    registration={pdfTarget.registration}
+                    senseiName={pdfTarget.senseiName}
+                />
+            </div>
+        )}
+      </div>
+
       {/* Left Column: Create/Edit & List */}
-      <div className="lg:col-span-1 flex flex-col gap-6 overflow-hidden">
+      <div className="lg:col-span-1 flex flex-col gap-6 overflow-hidden min-h-0">
         
         {/* Create/Edit Exam Form */}
-        <div className="p-5 bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-5 bg-white rounded-lg shadow-sm border border-gray-200 flex-shrink-0">
           <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-gray-800 flex items-center">
                 <Calendar className="mr-2" size={20} /> {editingExamId ? 'Editar Exame' : 'Novo Exame'}
@@ -283,8 +398,8 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
         </div>
 
         {/* Exam List */}
-        <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-          <h3 className="p-4 bg-gray-50 border-b font-semibold text-gray-700">Selecione um Exame</h3>
+        <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-0">
+          <h3 className="p-4 bg-gray-50 border-b font-semibold text-gray-700 flex-shrink-0">Selecione um Exame</h3>
           <div className="overflow-y-auto flex-1 p-2 space-y-2">
             {exams.length === 0 ? (
                 <p className="p-4 text-center text-gray-400 text-sm">Nenhum exame cadastrado.</p>
@@ -342,10 +457,10 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
       </div>
 
       {/* Right Column: Manage Participants */}
-      <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+      <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-0">
         {selectedExamId && currentExam ? (
             <>
-                <div className="p-5 border-b bg-gray-50 flex justify-between items-center">
+                <div className="p-5 border-b bg-gray-50 flex justify-between items-center flex-shrink-0">
                     <div>
                         <h2 className="text-xl font-bold text-gray-800 flex items-center">
                             Gerenciar Participantes
@@ -370,9 +485,9 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
                     </div>
                 </div>
 
-                <div className="p-5 overflow-y-auto flex-1">
+                <div className="p-5 overflow-y-auto flex-1 flex flex-col min-h-0">
                     {/* Add Form */}
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6 flex-shrink-0">
                         <h4 className="text-sm font-bold text-blue-900 mb-3 flex items-center">
                             <Plus size={16} className="mr-2" /> Adicionar Aluno ao Exame
                         </h4>
@@ -413,128 +528,154 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
                     </div>
 
                     {/* Table */}
-                    <div className="rounded-lg border border-gray-200 overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th 
-                                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                                        onClick={() => handleSort('name')}
-                                    >
-                                        <div className="flex items-center">
-                                            Aluno
-                                            {sortConfig.key === 'name' && (
-                                                <ArrowUpDown size={12} className={`ml-1 ${sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-gray-400'}`} />
-                                            )}
-                                        </div>
-                                    </th>
-                                    <th 
-                                        className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                                        onClick={() => handleSort('currentRank')}
-                                    >
-                                        <div className="flex items-center justify-center">
-                                            Faixa Atual
-                                            {sortConfig.key === 'currentRank' && (
-                                                <ArrowUpDown size={12} className={`ml-1 ${sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-gray-400'}`} />
-                                            )}
-                                        </div>
-                                    </th>
-                                    <th 
-                                        className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                                        onClick={() => handleSort('targetRank')}
-                                    >
-                                        <div className="flex items-center justify-center">
-                                            Faixa Pretendida
-                                            {sortConfig.key === 'targetRank' && (
-                                                <ArrowUpDown size={12} className={`ml-1 ${sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-gray-400'}`} />
-                                            )}
-                                        </div>
-                                    </th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Presença
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {sortedRegistrations.length === 0 ? (
+                    <div className="flex-1 rounded-lg border border-gray-200 overflow-hidden flex flex-col">
+                        <div className="overflow-x-auto flex-1">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50 sticky top-0 z-10">
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500 text-sm">
-                                            Nenhum aluno vinculado a este exame. Use o formulário acima para adicionar.
-                                        </td>
+                                        <th 
+                                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap"
+                                            onClick={() => handleSort('name')}
+                                        >
+                                            <div className="flex items-center">
+                                                Aluno
+                                                {sortConfig.key === 'name' && (
+                                                    <ArrowUpDown size={12} className={`ml-1 ${sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-gray-400'}`} />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th 
+                                            className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap"
+                                            onClick={() => handleSort('currentRank')}
+                                        >
+                                            <div className="flex items-center justify-center">
+                                                Faixa Atual
+                                                {sortConfig.key === 'currentRank' && (
+                                                    <ArrowUpDown size={12} className={`ml-1 ${sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-gray-400'}`} />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th 
+                                            className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap"
+                                            onClick={() => handleSort('targetRank')}
+                                        >
+                                            <div className="flex items-center justify-center">
+                                                Faixa Pretendida
+                                                {sortConfig.key === 'targetRank' && (
+                                                    <ArrowUpDown size={12} className={`ml-1 ${sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-gray-400'}`} />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                            Presença
+                                        </th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Ações</th>
                                     </tr>
-                                ) : (
-                                    sortedRegistrations.map(reg => {
-                                        const s = students.find(st => st.id === reg.studentId);
-                                        const isDeleting = deletingId === reg.id;
-                                        return (
-                                            <tr key={reg.id} className="hover:bg-gray-50 group">
-                                                <td className="px-4 py-3 whitespace-nowrap">
-                                                    <div className="text-sm font-medium text-gray-900">{s?.name || 'Desconhecido'}</div>
-                                                    <div className="text-xs text-gray-500">{s?.cpf || ''}</div>
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-500">
-                                                    <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
-                                                        {s?.currentRank}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-semibold text-gray-700">
-                                                    {reg.targetRank}
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-center">
-                                                    <input 
-                                                        type="checkbox"
-                                                        checked={!!reg.present}
-                                                        onChange={() => handleTogglePresence(reg.id, reg.present)}
-                                                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                                                        title="Marcar presença"
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
-                                                    {isDeleting ? (
-                                                        <div className="flex justify-end items-center gap-2">
-                                                            <button 
-                                                                type="button"
-                                                                onClick={(e) => { e.stopPropagation(); confirmDelete(reg.id); }}
-                                                                className="bg-red-100 text-red-600 p-1.5 rounded hover:bg-red-200 transition-colors"
-                                                                title="Confirmar exclusão"
-                                                            >
-                                                                <Check size={16} />
-                                                            </button>
-                                                            <button 
-                                                                type="button"
-                                                                onClick={(e) => { e.stopPropagation(); setDeletingId(null); }}
-                                                                className="bg-gray-100 text-gray-600 p-1.5 rounded hover:bg-gray-200 transition-colors"
-                                                                title="Cancelar"
-                                                            >
-                                                                <X size={16} />
-                                                            </button>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {sortedRegistrations.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-8 text-center text-gray-500 text-sm">
+                                                Nenhum aluno vinculado a este exame. Use o formulário acima para adicionar.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        sortedRegistrations.map(reg => {
+                                            const s = students.find(st => st.id === reg.studentId);
+                                            const isDeleting = deletingId === reg.id;
+                                            return (
+                                                <tr key={reg.id} className="hover:bg-gray-50 group">
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <div className="flex items-center">
+                                                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-red-100 flex items-center justify-center text-red-700 text-xs font-bold mr-3 border border-red-200">
+                                                                {s ? getInitials(s.name) : '?'}
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-sm font-medium text-gray-900">{s?.name || 'Desconhecido'}</div>
+                                                                <div className="text-xs text-gray-500">{s?.cpf || '-'}</div>
+                                                            </div>
                                                         </div>
-                                                    ) : (
-                                                        <button 
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                              e.stopPropagation();
-                                                              setDeletingId(reg.id);
-                                                            }}
-                                                            className="text-red-500 hover:text-red-700 p-2 rounded-md hover:bg-red-50 transition-colors cursor-pointer"
-                                                            title="Remover do exame"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-center text-sm">
+                                                        {s && (
+                                                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getRankBadgeStyle(s.currentRank)}`}>
+                                                                {s.currentRank}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-center text-sm">
+                                                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getRankBadgeStyle(reg.targetRank)}`}>
+                                                                {reg.targetRank}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={!!reg.present}
+                                                            onChange={() => handleTogglePresence(reg.id, reg.present)}
+                                                            className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                                            title="Marcar presença"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                                                        {isDeleting ? (
+                                                            <div className="flex justify-end items-center gap-2">
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={(e) => { e.stopPropagation(); confirmDelete(reg.id); }}
+                                                                    className="bg-red-100 text-red-600 p-1.5 rounded hover:bg-red-200 transition-colors"
+                                                                    title="Confirmar exclusão"
+                                                                >
+                                                                    <Check size={16} />
+                                                                </button>
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={(e) => { e.stopPropagation(); setDeletingId(null); }}
+                                                                    className="bg-gray-100 text-gray-600 p-1.5 rounded hover:bg-gray-200 transition-colors"
+                                                                    title="Cancelar"
+                                                                >
+                                                                    <X size={16} />
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex justify-end gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDownloadPDF(reg);
+                                                                    }}
+                                                                    className="text-gray-500 hover:text-blue-600 p-2 rounded-md hover:bg-blue-50 transition-colors"
+                                                                    title="Baixar Ficha PDF"
+                                                                >
+                                                                    <FileText size={18} />
+                                                                </button>
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                      e.stopPropagation();
+                                                                      setDeletingId(reg.id);
+                                                                    }}
+                                                                    className="text-gray-500 hover:text-red-700 p-2 rounded-md hover:bg-red-50 transition-colors cursor-pointer"
+                                                                    title="Remover do exame"
+                                                                >
+                                                                    <Trash2 size={18} />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </>
         ) : (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-gray-50">
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-gray-50 flex-1">
                 <CheckCircle size={48} className="mb-4 opacity-20" />
                 <p className="text-lg font-medium">Nenhum exame selecionado</p>
                 <p className="text-sm">Selecione um exame na lista à esquerda para gerenciar os participantes.</p>

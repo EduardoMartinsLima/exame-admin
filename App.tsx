@@ -193,6 +193,7 @@ const App: React.FC = () => {
                   exams={data.exams} 
                   students={data.students} 
                   registrations={data.registrations} 
+                  senseis={data.senseis}
                   onUpdate={() => refreshData(false)} 
                 />
               )}

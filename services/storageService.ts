@@ -101,7 +101,6 @@ export const storageService = {
   },
 
   deleteSensei: async (id: string) => {
-    // Database is configured with ON DELETE SET NULL for students referencing this sensei
     const { error } = await supabase.from('senseis').delete().eq('id', id);
     if (error) console.error('Error deleting sensei:', JSON.stringify(error));
     return { error };
@@ -119,36 +118,28 @@ export const storageService = {
       sensei_id: student.senseiId ? student.senseiId : null
     };
     const { error } = await supabase.from('students').insert(dbStudent);
-    if (error) {
-        return { error };
-    }
+    if (error) return { error };
     return { error: null };
   },
 
   updateStudent: async (id: string, updates: Partial<Student>) => {
     const dbUpdates: any = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
-    // Convert empty string to null specifically for DB constraints
-    if (updates.cpf !== undefined) dbUpdates.cpf = updates.cpf ? updates.cpf : null;
+    // Explicit null check to allow clearing fields
+    if ('cpf' in updates) dbUpdates.cpf = updates.cpf || null;
     if (updates.sex !== undefined) dbUpdates.sex = updates.sex;
-    if (updates.birthDate !== undefined) dbUpdates.birth_date = updates.birthDate ? updates.birthDate : null;
+    if ('birthDate' in updates) dbUpdates.birth_date = updates.birthDate || null;
     if (updates.currentRank !== undefined) dbUpdates.current_rank = updates.currentRank;
-    // Explicitly handle null for unlinking. If empty string is passed, treat as null.
-    if (updates.senseiId !== undefined) dbUpdates.sensei_id = updates.senseiId ? updates.senseiId : null;
+    if ('senseiId' in updates) dbUpdates.sensei_id = updates.senseiId || null;
 
     const { error } = await supabase.from('students').update(dbUpdates).eq('id', id);
-    if (error) {
-        return { error };
-    }
+    if (error) return { error };
     return { error: null };
   },
 
   deleteStudent: async (id: string) => {
-    // Registrations cascade delete due to foreign key constraints
     const { error } = await supabase.from('students').delete().eq('id', id);
-    if (error) {
-        return { error };
-    }
+    if (error) return { error };
     return { error: null };
   },
 
@@ -158,15 +149,12 @@ export const storageService = {
       name: s.name,
       cpf: s.cpf || null,
       sex: s.sex,
-      birth_date: s.birthDate || null, // Allow null dates
+      birth_date: s.birthDate || null,
       current_rank: s.currentRank,
       sensei_id: s.senseiId || null
     }));
     const { error } = await supabase.from('students').insert(dbStudents);
-    if (error) {
-        // Return the error so the UI can display it
-        return { error };
-    }
+    if (error) return { error };
     return { error: null };
   },
 
@@ -211,16 +199,26 @@ export const storageService = {
 
   updateResult: async (regId: string, updates: Partial<ExamRegistration>) => {
     const dbUpdates: any = {};
-    if (updates.present !== undefined) dbUpdates.present = updates.present;
-    if (updates.kihon !== undefined) dbUpdates.kihon = updates.kihon;
-    if (updates.kata1 !== undefined) dbUpdates.kata1 = updates.kata1;
-    if (updates.kata2 !== undefined) dbUpdates.kata2 = updates.kata2;
-    if (updates.kumite !== undefined) dbUpdates.kumite = updates.kumite;
-    if (updates.average !== undefined) dbUpdates.average = updates.average;
-    if (updates.pass !== undefined) dbUpdates.pass = updates.pass;
+    
+    // Explicit checks for keys allow sending 'null'
+    if ('present' in updates) dbUpdates.present = updates.present;
+    
+    if ('kihon' in updates) dbUpdates.kihon = updates.kihon;
+    if ('kata1' in updates) dbUpdates.kata1 = updates.kata1;
+    if ('kata2' in updates) dbUpdates.kata2 = updates.kata2;
+    if ('kumite' in updates) dbUpdates.kumite = updates.kumite;
+    
+    if ('average' in updates) dbUpdates.average = updates.average;
+    if ('pass' in updates) dbUpdates.pass = updates.pass;
+
+    // console.log("Updating registration", regId, "with payload:", dbUpdates);
 
     const { error } = await supabase.from('exam_registrations').update(dbUpdates).eq('id', regId);
-    if (error) console.error('Error updating result:', JSON.stringify(error));
-    return { error };
+    
+    if (error) {
+        console.error('Error updating result:', JSON.stringify(error));
+        return { error };
+    }
+    return { error: null };
   }
 };
