@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Exam, Student, ExamRegistration, Rank, Sensei } from '../types';
 import { storageService } from '../services/storageService';
 import { RANKS } from '../constants';
-import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check, Pencil, ArrowUpDown, CheckSquare, FileText } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check, Pencil, ArrowUpDown, CheckSquare, FileText, FileDown } from 'lucide-react';
 import { ExamSheet } from './ExamSheet';
 
 interface Props {
@@ -35,7 +35,7 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
   // Sorting State
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
 
-  // PDF Generation State
+  // Single PDF Generation State
   const [pdfTarget, setPdfTarget] = useState<{
       student: Student;
       registration: ExamRegistration;
@@ -43,6 +43,17 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
       senseiName: string;
   } | null>(null);
 
+  // Batch PDF Generation State
+  const [pdfBatchTarget, setPdfBatchTarget] = useState<{
+      items: Array<{
+          student: Student;
+          registration: ExamRegistration;
+          exam: Exam;
+          senseiName: string;
+      }>
+  } | null>(null);
+
+  // Effect for Single PDF
   useEffect(() => {
     if (pdfTarget) {
         // Allow DOM to render the hidden sheet
@@ -51,6 +62,15 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
         }, 500);
     }
   }, [pdfTarget]);
+
+  // Effect for Batch PDF
+  useEffect(() => {
+    if (pdfBatchTarget) {
+        setTimeout(() => {
+            generateBatchPDF();
+        }, 1000); // Give a bit more time for list rendering
+    }
+  }, [pdfBatchTarget]);
 
   const generatePDF = async () => {
     if (!pdfTarget) return;
@@ -83,6 +103,37 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
     }
   };
 
+  const generateBatchPDF = async () => {
+    if (!pdfBatchTarget || !currentExam) return;
+
+    const element = document.getElementById('hidden-batch-sheet-content');
+    if (!element) return;
+
+    const html2pdf = (window as any).html2pdf;
+    if (!html2pdf) {
+        alert('Biblioteca de PDF não carregada.');
+        setPdfBatchTarget(null);
+        return;
+    }
+
+    const opt = {
+      margin: 0,
+      filename: `fichas_exame_${currentExam.date}_completo.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+
+    try {
+        await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+        console.error(err);
+        alert('Erro ao gerar PDF em lote');
+    } finally {
+        setPdfBatchTarget(null);
+    }
+  };
+
   const handleDownloadPDF = (reg: ExamRegistration) => {
       const student = students.find(s => s.id === reg.studentId);
       const exam = exams.find(e => e.id === reg.examId);
@@ -96,6 +147,34 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
           exam,
           senseiName: sensei?.name || '-'
       });
+  };
+
+  const handleDownloadAllPDF = () => {
+    if (!selectedExamId || !currentExam) return;
+    
+    // Use sortedRegistrations to maintain the order seen in the table
+    const items = sortedRegistrations.map(reg => {
+        const student = students.find(s => s.id === reg.studentId);
+        if (!student) return null;
+        const sensei = senseis.find(s => s.id === student.senseiId);
+        return {
+            student,
+            registration: reg,
+            exam: currentExam,
+            senseiName: sensei?.name || '-'
+        };
+    }).filter((item): item is NonNullable<typeof item> => item !== null);
+
+    if (items.length === 0) {
+        alert("Nenhum aluno vinculado para gerar fichas.");
+        return;
+    }
+
+    if (!window.confirm(`Deseja gerar um PDF com as fichas de todos os ${items.length} alunos listados?`)) {
+        return;
+    }
+
+    setPdfBatchTarget({ items });
   };
 
   // Helper to format date avoiding timezone issues
@@ -323,6 +402,7 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
 
       {/* Hidden container for PDF generation */}
       <div id="hidden-exam-sheet" className="fixed top-0 left-0 -z-50 invisible">
+        {/* Single Sheet */}
         {pdfTarget && (
             <div id="hidden-exam-sheet-content" className="exam-sheet-page">
                 <ExamSheet 
@@ -331,6 +411,22 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
                     registration={pdfTarget.registration}
                     senseiName={pdfTarget.senseiName}
                 />
+            </div>
+        )}
+        
+        {/* Batch Sheets */}
+        {pdfBatchTarget && (
+            <div id="hidden-batch-sheet-content">
+                {pdfBatchTarget.items.map((item, index) => (
+                    <div key={index} className="exam-sheet-page" style={{ pageBreakAfter: 'always' }}>
+                        <ExamSheet 
+                            student={item.student}
+                            exam={item.exam}
+                            registration={item.registration}
+                            senseiName={item.senseiName}
+                        />
+                    </div>
+                ))}
             </div>
         )}
       </div>
@@ -470,6 +566,16 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleDownloadAllPDF}
+                            disabled={isSubmitting || currentRegistrations.length === 0}
+                            className="flex items-center text-xs font-medium text-green-700 hover:text-green-900 hover:bg-green-50 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-green-200"
+                            title="Baixar todas as fichas"
+                        >
+                            <FileDown size={16} className="mr-1.5" />
+                            Baixar Fichas
+                        </button>
+
                         <button
                             onClick={handleMarkAllPresent}
                             disabled={isSubmitting || currentRegistrations.length === 0}
