@@ -196,29 +196,26 @@ const FederationSide: React.FC<HeaderProps> = (props) => {
             
             <div className="flex-1 flex flex-col gap-1">
                  {/* Scores Table */}
-                <div className="border-2 border-black">
-                    <div className="grid grid-cols-5 bg-gray-100 print:bg-gray-100 text-center font-bold border-b-2 border-black text-[8px]">
-                        <div className="col-span-2 border-r border-black py-0.5">TESTES</div>
-                        <div className="border-r border-black py-0.5">1ª</div>
-                        <div className="border-r border-black py-0.5">2ª</div>
-                        <div className="py-0.5">MÉDIA</div>
+                <div className="border-2 border-black mb-1">
+                    <div className="grid grid-cols-6 bg-gray-100 print:bg-gray-100 text-center font-bold border-b-2 border-black text-[8px]">
+                        <div className="col-span-1 border-r border-black py-0.5">TESTES</div>
+                        <div className="col-span-1 border-r border-black py-0.5">1ª</div>
+                        <div className="col-span-1 border-r border-black py-0.5">2ª</div>
+                        <div className="col-span-1 border-r border-black py-0.5">MÉDIA</div>
+                        <div className="col-span-2 py-0.5">EXAMINADOR</div>
                     </div>
                     {['KIHON', 'KATA', 'KUMITÊ', 'C. GERAIS'].map((item, idx) => (
-                        <div key={item} className={`grid grid-cols-5 text-center ${idx < 3 ? 'border-b border-black' : ''} h-8`}>
-                            <div className="col-span-2 border-r border-black flex items-center justify-center font-bold text-[9px] bg-gray-50 print:bg-gray-50">{item}</div>
-                            <div className="border-r border-black"></div>
-                            <div className="border-r border-black"></div>
-                            <div></div>
+                        <div key={item} className={`grid grid-cols-6 text-center ${idx < 3 ? 'border-b border-black' : ''} h-8`}>
+                            <div className="col-span-1 border-r border-black flex items-center justify-center font-bold text-[8px] bg-gray-50 print:bg-gray-50 px-0.5 leading-tight">{item}</div>
+                            <div className="col-span-1 border-r border-black"></div>
+                            <div className="col-span-1 border-r border-black"></div>
+                            <div className="col-span-1 border-r border-black"></div>
+                            <div className="col-span-2"></div>
                         </div>
                     ))}
                 </div>
                 
-                <div className="border-2 border-black text-center font-bold text-[9px] py-0.5 uppercase">
-                    Examinador
-                </div>
-                <div className="border-2 border-t-0 border-black h-8 mb-1"></div>
-
-                 {/* Final Result */}
+                {/* Final Result */}
                 <div className="border-2 border-black p-0.5 flex items-center justify-between text-[9px] h-8">
                     <span className="font-bold pl-2">NOTA FINAL:</span>
                     <div className="flex gap-4 pr-2">
@@ -347,14 +344,14 @@ interface Props {
 
 export const ExamSheet: React.FC<Props> = (props) => {
   return (
-    <div className="w-full h-full flex flex-row items-stretch justify-between bg-white overflow-hidden">
+    <div className="w-full h-full flex flex-row items-stretch justify-between bg-white overflow-hidden p-[5mm]">
         {/* Left Sheet: Federation Copy */}
-        <div className="w-[49%] h-full">
+        <div className="w-[48%] h-full">
             <FederationSide {...props} />
         </div>
 
         {/* Center Cut Line */}
-        <div className="relative w-[2%] flex flex-col items-center justify-center">
+        <div className="relative w-[4%] flex flex-col items-center justify-center">
              <div className="h-full border-l-2 border-dashed border-gray-400"></div>
              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-1">
                 <Scissors size={16} className="text-gray-500 transform rotate-90" />
@@ -362,7 +359,7 @@ export const ExamSheet: React.FC<Props> = (props) => {
         </div>
 
         {/* Right Sheet: Athlete Copy */}
-        <div className="w-[49%] h-full">
+        <div className="w-[48%] h-full">
             <AthleteSide {...props} />
         </div>
     </div>
