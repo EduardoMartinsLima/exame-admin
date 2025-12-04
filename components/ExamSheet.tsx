@@ -30,7 +30,7 @@ const SectionTitle: React.FC<{ title: string }> = ({ title }) => (
 );
 
 const ListItem: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex justify-between items-end text-[7px] leading-tight border-b border-gray-400 border-dotted pt-0.5">
+  <div className="flex justify-between items-end text-[7px] leading-tight border-b border-gray-400 border-dotted pt-[1px]">
     <span className="truncate pr-1">{label}</span>
     <CheckBox />
   </div>
@@ -235,8 +235,8 @@ const FederationSide: React.FC<HeaderProps> = (props) => {
 
                 {/* Signatures */}
                 <div className="grid grid-cols-2 border-2 border-black mt-auto">
-                    <div className="border-r border-black p-0.5 pt-8 text-[8px] leading-none text-left">Chefe da banca:</div>
-                    <div className="p-0.5 pt-8 text-[8px] leading-none text-left">Secretaria:</div>
+                    <div className="border-r border-black p-0.5 pt-6 text-[8px] leading-none text-left">Chefe da banca:</div>
+                    <div className="p-0.5 pt-6 text-[8px] leading-none text-left">Secretaria:</div>
                 </div>
             </div>
         </div>

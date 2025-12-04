@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AppData, Rank } from '../types';
 import { RANKS } from '../constants';
-import { FileText, Filter, ArrowUpDown, Printer, Users, Trophy, ClipboardCheck, Award, List, FileBadge } from 'lucide-react';
+import { FileText, Filter, ArrowUpDown, Printer, Users, Trophy, ClipboardCheck, Award, List, FileBadge, Download } from 'lucide-react';
 import { KarateLogo } from './KarateLogo';
 import { ExamSheet } from './ExamSheet';
 
@@ -14,6 +14,7 @@ type ReportType = 'results' | 'exam_list' | 'approval_list' | 'passed_list' | 's
 
 export const Report: React.FC<Props> = ({ data }) => {
   const [reportType, setReportType] = useState<ReportType>('results');
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   const [filterRank, setFilterRank] = useState<string>('');
   const [filterSensei, setFilterSensei] = useState<string>('');
@@ -89,6 +90,56 @@ export const Report: React.FC<Props> = ({ data }) => {
     window.print();
   };
 
+  const handlePrintSheetsDirectly = () => {
+      setReportType('exam_sheets');
+      setSortBy('name');
+      // Allow React to render the sheets view before printing
+      setTimeout(() => {
+          window.print();
+      }, 500);
+  };
+
+  const handleDownloadPDF = async () => {
+    const element = document.getElementById('exam-sheets-container');
+    if (!element) return;
+
+    const html2pdf = (window as any).html2pdf;
+    if (!html2pdf) {
+        alert('Biblioteca de geração de PDF não está disponível. Por favor, use o botão "Imprimir Fichas" e selecione "Salvar como PDF".');
+        return;
+    }
+
+    setIsGeneratingPdf(true);
+
+    // Prepare DOM for clean PDF generation
+    // Remove shadows and spacing to prevent artifacts
+    const originalShadows = document.querySelectorAll('.exam-sheet-page');
+    originalShadows.forEach(el => el.classList.remove('shadow-xl'));
+    
+    // Temporarily remove spacing class from container to ensure tight packing for pages
+    element.classList.remove('space-y-8');
+
+    const opt = {
+      margin: 0,
+      filename: `fichas_exame_${selectedExamDetails?.date || 'geral'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+
+    try {
+        await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+        console.error('PDF Generation Error:', err);
+        alert('Erro ao gerar PDF. Tente usar a opção de Imprimir.');
+    } finally {
+        // Restore DOM
+        originalShadows.forEach(el => el.classList.add('shadow-xl'));
+        element.classList.add('space-y-8');
+        setIsGeneratingPdf(false);
+    }
+  };
+
   const selectedExamDetails = data.exams.find(e => e.id === filterExam);
 
   // Helper to determine if exam selection is required
@@ -107,6 +158,8 @@ export const Report: React.FC<Props> = ({ data }) => {
              /* Ensure content shows up */
              display: block; 
              overflow: hidden;
+             box-sizing: border-box; /* Important: Include padding in width calculation */
+             padding: 5mm 5mm 15mm 5mm; /* Top Right Bottom Left - Larger bottom margin */
         }
 
         @media print {
@@ -149,15 +202,18 @@ export const Report: React.FC<Props> = ({ data }) => {
               /* Styles specific to Exam Sheets Print Mode */
               .exam-sheet-page {
                   page-break-after: always;
+                  break-after: page;
                   width: 297mm;
                   height: 210mm;
                   margin: 0;
-                  padding: 5mm; /* Safety padding for printers */
+                  padding: 5mm 5mm 15mm 5mm; /* Top Right Bottom Left - Larger bottom margin */
+                  box-sizing: border-box; /* Crucial for correct A4 fit */
                   box-shadow: none;
                   border: none;
               }
               .exam-sheet-page:last-child {
                   page-break-after: auto;
+                  break-after: auto;
               }
               /* Hide report headers in sheet mode */
               .print-header, .report-view-header { display: none !important; }
@@ -252,19 +308,38 @@ export const Report: React.FC<Props> = ({ data }) => {
          
          <div className="flex items-center gap-2">
              {filterExam && reportType !== 'exam_sheets' && (
+                 <>
+                    <button 
+                        onClick={() => {
+                            setReportType('exam_sheets');
+                            setSortBy('name');
+                        }}
+                        className="flex items-center bg-white text-red-700 border border-red-200 px-4 py-2 rounded-md hover:bg-red-50 transition-colors text-sm whitespace-nowrap shadow-sm"
+                    >
+                        <FileBadge size={16} className="mr-2" /> Visualizar Fichas
+                    </button>
+                    <button 
+                        onClick={handlePrintSheetsDirectly}
+                        className="flex items-center bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors text-sm whitespace-nowrap shadow-lg"
+                    >
+                        <Printer size={16} className="mr-2" /> Imprimir Fichas
+                    </button>
+                 </>
+             )}
+             
+             {reportType === 'exam_sheets' && filterExam && (
                  <button 
-                    onClick={() => {
-                        setReportType('exam_sheets');
-                        setSortBy('name');
-                    }}
-                    className="flex items-center bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors text-sm whitespace-nowrap shadow-lg"
+                    onClick={handleDownloadPDF}
+                    disabled={isGeneratingPdf}
+                    className="flex items-center bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-800 transition-colors text-sm whitespace-nowrap shadow-lg disabled:opacity-50"
                  >
-                    <FileBadge size={16} className="mr-2" /> Gerar Fichas
+                    <Download size={16} className="mr-2" /> {isGeneratingPdf ? 'Gerando...' : 'Baixar PDF'}
                  </button>
              )}
+
              <button 
                 onClick={handlePrint}
-                className="flex items-center bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 transition-colors text-sm whitespace-nowrap shadow-lg"
+                className={`flex items-center bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 transition-colors text-sm whitespace-nowrap shadow-lg ${reportType !== 'exam_sheets' && filterExam ? 'hidden xl:flex' : ''}`}
              >
                 <Printer size={16} className="mr-2" /> {reportType === 'exam_sheets' ? 'Imprimir Fichas' : 'Imprimir'}
              </button>
@@ -404,7 +479,7 @@ export const Report: React.FC<Props> = ({ data }) => {
         {/* EXAM SHEETS VIEW */}
         {reportType === 'exam_sheets' && filterExam && (
              <div className="bg-gray-100 p-8 print:p-0 print:bg-white overflow-auto">
-                 <div className="max-w-fit mx-auto print:max-w-none print:mx-0 space-y-8 print:space-y-0">
+                 <div id="exam-sheets-container" className="max-w-fit mx-auto print:max-w-none print:mx-0 space-y-8 print:space-y-0">
                      {sortedData.map((item) => (
                          <div key={item.id} className="bg-white shadow-xl print:shadow-none exam-sheet-page">
                              {item.fullStudent && item.fullExam && (
