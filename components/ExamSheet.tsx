@@ -41,10 +41,11 @@ interface HeaderProps {
     student: Student;
     exam: Exam;
     registration: ExamRegistration;
+    senseiName?: string;
     isRightSide?: boolean;
 }
 
-const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, isRightSide }) => {
+const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, senseiName, isRightSide }) => {
     // Calculate Age
     const getAge = (birthDateString?: string) => {
         if (!birthDateString) return '';
@@ -89,10 +90,10 @@ const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, isRi
 
             <div className="grid grid-cols-12 gap-0 divide-x divide-black border-b border-black">
                 <div className="col-span-8 p-0.5 flex items-center">
-                    <span className="font-bold mr-1">Atleta:</span> <span className="uppercase font-semibold truncate">{student.name}</span>
+                    <span className="font-bold mr-1">Atleta:</span> <span className="uppercase font-bold truncate">{student.name}</span>
                 </div>
                 <div className="col-span-4 p-0.5 flex items-center">
-                    <span className="font-bold mr-1">Matrícula Nº:</span>
+                    <span className="font-bold mr-1">Sensei:</span> <span className="uppercase truncate">{senseiName || '-'}</span>
                 </div>
             </div>
             
@@ -326,9 +327,13 @@ const AthleteSide: React.FC<HeaderProps> = (props) => {
                                 {LISTS.gerais.map(i => <ListItem key={i} label={i} />)}
                             </div>
                         </div>
-                        <div className="mt-1 border border-black p-0.5 flex-1 min-h-[20px] text-[8px]">
-                            <span className="font-bold">Obs.:</span>
-                        </div>
+                    </div>
+                </div>
+
+                {/* Obs Full Width */}
+                <div className="px-1 pb-1 mt-auto">
+                     <div className="border border-black p-0.5 min-h-[40px] text-[8px] flex flex-col">
+                        <span className="font-bold mb-1">Obs.:</span>
                     </div>
                 </div>
             </div>
@@ -340,6 +345,7 @@ interface Props {
   student: Student;
   exam: Exam;
   registration: ExamRegistration;
+  senseiName?: string;
 }
 
 export const ExamSheet: React.FC<Props> = (props) => {

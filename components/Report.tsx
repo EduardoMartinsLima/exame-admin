@@ -159,7 +159,7 @@ export const Report: React.FC<Props> = ({ data }) => {
              display: block; 
              overflow: hidden;
              box-sizing: border-box; /* Important: Include padding in width calculation */
-             padding: 5mm 5mm 15mm 5mm; /* Top Right Bottom Left - Larger bottom margin */
+             padding: 5mm; /* Uniform 5mm margin on all sides */
         }
 
         @media print {
@@ -206,7 +206,7 @@ export const Report: React.FC<Props> = ({ data }) => {
                   width: 297mm;
                   height: 210mm;
                   margin: 0;
-                  padding: 5mm 5mm 15mm 5mm; /* Top Right Bottom Left - Larger bottom margin */
+                  padding: 5mm 5mm 15mm 5mm; /* Extra bottom margin for print */
                   box-sizing: border-box; /* Crucial for correct A4 fit */
                   box-shadow: none;
                   border: none;
@@ -486,7 +486,8 @@ export const Report: React.FC<Props> = ({ data }) => {
                                  <ExamSheet 
                                     student={item.fullStudent} 
                                     exam={item.fullExam} 
-                                    registration={item} 
+                                    registration={item}
+                                    senseiName={item.senseiName}
                                  />
                              )}
                          </div>
