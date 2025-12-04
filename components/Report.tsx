@@ -98,6 +98,17 @@ export const Report: React.FC<Props> = ({ data }) => {
     <div className="space-y-6">
       {/* CSS for printing */}
       <style>{`
+        /* CSS Specific for Screen Preview of Sheets */
+        .exam-sheet-page {
+             width: 297mm; 
+             height: 210mm;
+             margin: 0 auto 2rem auto;
+             background-color: white;
+             /* Ensure content shows up */
+             display: block; 
+             overflow: hidden;
+        }
+
         @media print {
           @page { 
             /* A4 Landscape Dimensions */
@@ -109,39 +120,55 @@ export const Report: React.FC<Props> = ({ data }) => {
             padding: 0;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            background-color: white !important;
           }
+          /* Hide everything by default */
           body * {
             visibility: hidden;
           }
+          /* Show only the report content container */
           #report-content, #report-content * {
             visibility: visible;
           }
+          
           #report-content {
             position: absolute;
             left: 0;
             top: 0;
-            width: 297mm; /* Exact A4 width */
-            min-height: 210mm; /* Exact A4 height */
-            background-color: white !important;
-            box-shadow: none !important;
+            width: 100%;
             margin: 0;
             padding: 0;
+            background: white;
           }
+          
           .no-print {
             display: none !important;
           }
           
           ${reportType === 'exam_sheets' ? `
+              /* Styles specific to Exam Sheets Print Mode */
               .exam-sheet-page {
                   page-break-after: always;
                   width: 297mm;
                   height: 210mm;
-                  overflow: hidden;
-                  /* Padding to simulate printer margins safely */
-                  padding: 5mm; 
+                  margin: 0;
+                  padding: 5mm; /* Safety padding for printers */
+                  box-shadow: none;
+                  border: none;
+              }
+              .exam-sheet-page:last-child {
+                  page-break-after: auto;
               }
               /* Hide report headers in sheet mode */
               .print-header, .report-view-header { display: none !important; }
+              
+              /* Ensure parent container doesn't restrict size */
+              #report-content {
+                 width: auto !important;
+                 height: auto !important;
+                 overflow: visible !important;
+                 position: static !important;
+              }
           ` : `
               /* Normal Report Styling Overrides */
               #report-content { padding: 10mm; width: 100%; }
@@ -222,12 +249,26 @@ export const Report: React.FC<Props> = ({ data }) => {
                 <FileBadge size={16} className="mr-2" /> Fichas de Exame
             </button>
          </div>
-         <button 
-            onClick={handlePrint}
-            className="flex items-center bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 transition-colors text-sm whitespace-nowrap shadow-lg"
-         >
-            <Printer size={16} className="mr-2" /> Imprimir
-         </button>
+         
+         <div className="flex items-center gap-2">
+             {filterExam && reportType !== 'exam_sheets' && (
+                 <button 
+                    onClick={() => {
+                        setReportType('exam_sheets');
+                        setSortBy('name');
+                    }}
+                    className="flex items-center bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors text-sm whitespace-nowrap shadow-lg"
+                 >
+                    <FileBadge size={16} className="mr-2" /> Gerar Fichas
+                 </button>
+             )}
+             <button 
+                onClick={handlePrint}
+                className="flex items-center bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 transition-colors text-sm whitespace-nowrap shadow-lg"
+             >
+                <Printer size={16} className="mr-2" /> {reportType === 'exam_sheets' ? 'Imprimir Fichas' : 'Imprimir'}
+             </button>
+         </div>
       </div>
 
       {/* Filters */}
@@ -300,7 +341,7 @@ export const Report: React.FC<Props> = ({ data }) => {
       </div>
 
       {/* Report Content Area */}
-      <div id="report-content" className={`bg-white rounded-xl shadow-lg overflow-hidden min-h-[500px] border border-gray-200 ${reportType === 'exam_sheets' ? 'p-0 shadow-none border-none' : ''}`}>
+      <div id="report-content" className={`bg-white rounded-xl shadow-lg overflow-hidden min-h-[500px] border border-gray-200 ${reportType === 'exam_sheets' ? 'p-0 shadow-none border-none bg-gray-100' : ''}`}>
         
         {/* Formal Header for Print (Hidden on Screen) */}
         <div className="print-header hidden flex-col items-center justify-center p-8 border-b-2 border-red-900 mb-2">
@@ -362,10 +403,10 @@ export const Report: React.FC<Props> = ({ data }) => {
 
         {/* EXAM SHEETS VIEW */}
         {reportType === 'exam_sheets' && filterExam && (
-             <div className="bg-gray-100 p-8 print:p-0 print:bg-white">
-                 <div className="max-w-4xl mx-auto print:max-w-none print:mx-0 space-y-8 print:space-y-0">
+             <div className="bg-gray-100 p-8 print:p-0 print:bg-white overflow-auto">
+                 <div className="max-w-fit mx-auto print:max-w-none print:mx-0 space-y-8 print:space-y-0">
                      {sortedData.map((item) => (
-                         <div key={item.id} className="bg-white shadow-xl print:shadow-none print:w-full print:h-full exam-sheet-page">
+                         <div key={item.id} className="bg-white shadow-xl print:shadow-none exam-sheet-page">
                              {item.fullStudent && item.fullExam && (
                                  <ExamSheet 
                                     student={item.fullStudent} 
