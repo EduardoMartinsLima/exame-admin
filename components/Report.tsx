@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { AppData, Rank } from '../types';
 import { RANKS } from '../constants';
-import { FileText, Filter, ArrowUpDown, Printer, Users, Trophy, ClipboardCheck, Award, List } from 'lucide-react';
+import { FileText, Filter, ArrowUpDown, Printer, Users, Trophy, ClipboardCheck, Award, List, FileBadge } from 'lucide-react';
 import { KarateLogo } from './KarateLogo';
+import { ExamSheet } from './ExamSheet';
 
 interface Props {
   data: AppData;
 }
 
 type SortOption = 'rank' | 'grade_desc' | 'grade_asc' | 'name';
-type ReportType = 'results' | 'exam_list' | 'approval_list' | 'passed_list' | 'student_list';
+type ReportType = 'results' | 'exam_list' | 'approval_list' | 'passed_list' | 'student_list' | 'exam_sheets';
 
 export const Report: React.FC<Props> = ({ data }) => {
   const [reportType, setReportType] = useState<ReportType>('results');
@@ -43,7 +44,10 @@ export const Report: React.FC<Props> = ({ data }) => {
           examDate: exam?.date,
           examTime: exam?.time,
           examLocation: exam?.location,
-          examId: reg.examId
+          examId: reg.examId,
+          // Full objects for ExamSheet
+          fullStudent: student,
+          fullExam: exam
         };
       }).filter(item => {
         // Apply filters
@@ -88,14 +92,24 @@ export const Report: React.FC<Props> = ({ data }) => {
   const selectedExamDetails = data.exams.find(e => e.id === filterExam);
 
   // Helper to determine if exam selection is required
-  const isExamSelectionRequired = reportType === 'exam_list' || reportType === 'approval_list' || reportType === 'student_list';
+  const isExamSelectionRequired = reportType === 'exam_list' || reportType === 'approval_list' || reportType === 'student_list' || reportType === 'exam_sheets';
 
   return (
     <div className="space-y-6">
       {/* CSS for printing */}
       <style>{`
         @media print {
-          @page { margin: 1cm; }
+          @page { 
+            /* A4 Landscape Dimensions */
+            size: A4 landscape;
+            margin: 0; /* Important: remove default margins */
+          }
+          body {
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           body * {
             visibility: hidden;
           }
@@ -106,26 +120,38 @@ export const Report: React.FC<Props> = ({ data }) => {
             position: absolute;
             left: 0;
             top: 0;
-            width: 100%;
+            width: 297mm; /* Exact A4 width */
+            min-height: 210mm; /* Exact A4 height */
             background-color: white !important;
-            min-height: auto !important;
             box-shadow: none !important;
+            margin: 0;
+            padding: 0;
           }
           .no-print {
             display: none !important;
           }
-          /* Force background colors */
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          /* Print Styling Overrides */
-          table { width: 100% !important; border-collapse: collapse !important; }
-          th, td { border: 1px solid #ddd !important; padding: 8px !important; color: #000 !important; }
-          thead th { background-color: #f3f4f6 !important; font-weight: bold !important; }
-          .status-badge { border: 1px solid #000 !important; background: none !important; color: #000 !important; }
-          /* Hide print header on screen, show on print */
-          .print-header { display: flex !important; }
+          
+          ${reportType === 'exam_sheets' ? `
+              .exam-sheet-page {
+                  page-break-after: always;
+                  width: 297mm;
+                  height: 210mm;
+                  overflow: hidden;
+                  /* Padding to simulate printer margins safely */
+                  padding: 5mm; 
+              }
+              /* Hide report headers in sheet mode */
+              .print-header, .report-view-header { display: none !important; }
+          ` : `
+              /* Normal Report Styling Overrides */
+              #report-content { padding: 10mm; width: 100%; }
+              table { width: 100% !important; border-collapse: collapse !important; }
+              th, td { border: 1px solid #ddd !important; padding: 8px !important; color: #000 !important; }
+              thead th { background-color: #f3f4f6 !important; font-weight: bold !important; }
+              .status-badge { border: 1px solid #000 !important; background: none !important; color: #000 !important; }
+              /* Hide print header on screen, show on print */
+              .print-header { display: flex !important; }
+          `}
         }
       `}</style>
 
@@ -183,6 +209,17 @@ export const Report: React.FC<Props> = ({ data }) => {
                 }`}
             >
                 <Award size={16} className="mr-2" /> Aprovados
+            </button>
+            <button
+                onClick={() => {
+                    setReportType('exam_sheets');
+                    setSortBy('name');
+                }}
+                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    reportType === 'exam_sheets' ? 'bg-white text-red-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                }`}
+            >
+                <FileBadge size={16} className="mr-2" /> Fichas de Exame
             </button>
          </div>
          <button 
@@ -263,7 +300,7 @@ export const Report: React.FC<Props> = ({ data }) => {
       </div>
 
       {/* Report Content Area */}
-      <div id="report-content" className="bg-white rounded-xl shadow-lg overflow-hidden min-h-[500px] border border-gray-200">
+      <div id="report-content" className={`bg-white rounded-xl shadow-lg overflow-hidden min-h-[500px] border border-gray-200 ${reportType === 'exam_sheets' ? 'p-0 shadow-none border-none' : ''}`}>
         
         {/* Formal Header for Print (Hidden on Screen) */}
         <div className="print-header hidden flex-col items-center justify-center p-8 border-b-2 border-red-900 mb-2">
@@ -277,7 +314,7 @@ export const Report: React.FC<Props> = ({ data }) => {
         </div>
 
         {/* Header for View/Screen */}
-        <div className="px-8 py-6 border-b border-gray-200 bg-gray-50 print:bg-white print:border-none print:px-0 print:py-2">
+        <div className="report-view-header px-8 py-6 border-b border-gray-200 bg-gray-50 print:bg-white print:border-none print:px-0 print:py-2">
              <div className="flex justify-between items-start">
                  <div>
                      <h3 className="text-2xl font-bold text-gray-900 flex items-center uppercase tracking-wide">
@@ -286,6 +323,7 @@ export const Report: React.FC<Props> = ({ data }) => {
                          {reportType === 'student_list' && 'Relação Nominal de Alunos'}
                          {reportType === 'approval_list' && 'Lista de Aprovação'}
                          {reportType === 'passed_list' && 'Relatório de Aprovados'}
+                         {reportType === 'exam_sheets' && 'Fichas de Exame'}
                      </h3>
                      {selectedExamDetails ? (
                          <div className="mt-2 text-red-800 print:text-gray-800">
@@ -322,8 +360,30 @@ export const Report: React.FC<Props> = ({ data }) => {
              </div>
         )}
 
-        {/* Table View */}
-        {(reportType === 'results' || reportType === 'passed_list' || (isExamSelectionRequired && filterExam)) && (
+        {/* EXAM SHEETS VIEW */}
+        {reportType === 'exam_sheets' && filterExam && (
+             <div className="bg-gray-100 p-8 print:p-0 print:bg-white">
+                 <div className="max-w-4xl mx-auto print:max-w-none print:mx-0 space-y-8 print:space-y-0">
+                     {sortedData.map((item) => (
+                         <div key={item.id} className="bg-white shadow-xl print:shadow-none print:w-full print:h-full exam-sheet-page">
+                             {item.fullStudent && item.fullExam && (
+                                 <ExamSheet 
+                                    student={item.fullStudent} 
+                                    exam={item.fullExam} 
+                                    registration={item} 
+                                 />
+                             )}
+                         </div>
+                     ))}
+                     {sortedData.length === 0 && (
+                         <div className="p-12 text-center text-gray-500 italic">Nenhum registro encontrado para gerar fichas.</div>
+                     )}
+                 </div>
+             </div>
+        )}
+
+        {/* Table View (Other Reports) */}
+        {reportType !== 'exam_sheets' && (reportType === 'results' || reportType === 'passed_list' || (isExamSelectionRequired && filterExam)) && (
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-red-900 text-white print:bg-gray-100 print:text-black">

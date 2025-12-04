@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Exam, Student, ExamRegistration, Rank } from '../types';
 import { storageService } from '../services/storageService';
 import { RANKS } from '../constants';
-import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check, Pencil, ArrowUpDown } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check, Pencil, ArrowUpDown, CheckSquare } from 'lucide-react';
 
 interface Props {
   exams: Exam[];
@@ -131,6 +131,35 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
     // Optimistic toggle could be implemented, but simple wait is safer
     await storageService.updateResult(regId, { present: !currentStatus });
     onUpdate();
+  };
+
+  const handleMarkAllPresent = async () => {
+    if (!selectedExamId) return;
+    
+    // Filter registrations for this exam that aren't already marked present
+    const regsToUpdate = registrations.filter(r => r.examId === selectedExamId && !r.present);
+
+    if (regsToUpdate.length === 0) return;
+
+    if (!window.confirm(`Marcar presença para todos os ${regsToUpdate.length} alunos pendentes?`)) {
+        return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+        const updates = regsToUpdate.map(reg => 
+            storageService.updateResult(reg.id, { present: true })
+        );
+        
+        await Promise.all(updates);
+        onUpdate();
+    } catch (error) {
+        console.error("Error updating presence:", error);
+        alert("Erro ao atualizar presenças.");
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const handleStudentSelect = (studentId: string) => {
@@ -325,8 +354,19 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, o
                             {formatDate(currentExam.date)} em {currentExam.location}
                         </p>
                     </div>
-                    <div className="bg-white px-3 py-1 rounded-full border shadow-sm text-sm font-medium text-gray-700">
-                        Total: {currentRegistrations.length}
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleMarkAllPresent}
+                            disabled={isSubmitting || currentRegistrations.length === 0}
+                            className="flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Marcar presença para todos os inscritos"
+                        >
+                            <CheckSquare size={16} className="mr-1.5" />
+                            Marcar Todos Presentes
+                        </button>
+                        <div className="bg-white px-3 py-1 rounded-full border shadow-sm text-sm font-medium text-gray-700">
+                            Total: {currentRegistrations.length}
+                        </div>
                     </div>
                 </div>
 
