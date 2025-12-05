@@ -5,10 +5,10 @@ import { Scissors } from 'lucide-react';
 
 // --- DATA LISTS ---
 const LISTS = {
-    ataques: ['Oi Zuki', 'Sambon Zuki', 'Gyaku Zuki', 'Empi Uchi', 'Shuto Uchi', 'Uraken Uchi', 'Tate Zuki', 'Tobi Komi Zuki', 'Nagashi Zuki'],
-    defesas: ['Gedan Barai', 'Age Uke', 'Soto Ukei', 'Uchi Uke', 'Shuto Uke', 'Nagashi Uke', 'Morote Uke'],
+    ataques: ['Oi Zuki', 'Sambon Zuki', 'Gyaku Zuki', 'Empi Uchi', 'Shuto Uchi', 'Uraken Uchi', 'Tate Zuki', 'Tobi Komi Zuki', 'Nagashi Zuki', 'Nukite', 'Mawashi Enpi'],
+    defesas: ['Gedan Barai', 'Age Uke', 'Soto Ukei', 'Uchi Uke', 'Shuto Uke', 'Nagashi Uke', 'Morote Uke', 'Sukui Uke'],
     pernas: ['Mae-Geri Keage', 'Mae-Geri Kekomi', 'Kizami-Geri', 'Mae-Len Geri', 'Mae Yoko Len Geri', 'Yoko Geri Keage', 'Yoko Geri Kekomi', 'Yoko Len Geri', 'Mawashi Geri', 'Hitsu Geri', 'Mae Tobi Geri', 'Ura Mawashi Geri', 'Ushiro Geri', 'Mikazuki Geri'],
-    renzoku: [1,2,3,4,5,6,7].map(i => `Renzoku Waza ${i}`),
+    renzoku: [1,2,3,4,5].map(i => `Renzoku Waza ${i}`),
     bases: ['Zenkutsu-Dachi', 'Kokutsu-Dachi', 'Kiba-Dachi', 'Nekoashi-Dachi', 'Hangetsu-Dachi', 'Sochin-Dachi'],
     kata: ['Instabilidade', 'Embu Zen', 'Espírito', 'Vista', 'Cintura', 'Kime', 'Kiai', 'Ritmo', 'Precisão', 'Forma'],
     kumite: ['Ataque', 'Defesa', 'Contra-Ataque', 'Distância', 'Eficiência', 'Kime', 'Confiança', 'Tempo', 'Esquiva', 'Zanchin'],
@@ -30,7 +30,7 @@ const SectionTitle: React.FC<{ title: string }> = ({ title }) => (
 );
 
 const ListItem: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex justify-between items-end text-[7px] leading-tight border-b border-gray-400 border-dotted pt-[1px]">
+  <div className="flex justify-between items-end text-[9px] leading-tight border-b border-gray-400 border-dotted pt-[1px]">
     <span className="truncate pr-1">{label}</span>
     <CheckBox />
   </div>
@@ -97,7 +97,7 @@ const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, sens
                 </div>
             </div>
             
-            {/* Admission/Age */}
+            {/* Admission/Age - REMOVED DATA ADMISSAO */}
             <div className="grid grid-cols-12 gap-0 divide-x divide-black border-b border-black">
                 {isRightSide ? (
                      <div className="col-span-12 p-0.5 grid grid-cols-12">
@@ -111,14 +111,13 @@ const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, sens
                      </div>
                 ) : (
                     <>
-                        <div className="col-span-4 p-0.5"><span className="font-bold mr-1">Data Admissão:</span></div>
-                        <div className="col-span-3 p-0.5"><span className="font-bold mr-1">Idade:</span> {getAge(student.birthDate)}</div>
-                        <div className="col-span-5 p-0.5"><span className="font-bold mr-1">Data Nasc.:</span> {formatDate(student.birthDate || '')}</div>
+                        <div className="col-span-4 p-0.5"><span className="font-bold mr-1">Idade:</span> {getAge(student.birthDate)}</div>
+                        <div className="col-span-8 p-0.5"><span className="font-bold mr-1">Data Nasc.:</span> {formatDate(student.birthDate || '')}</div>
                     </>
                 )}
             </div>
             
-            {/* Rank Info / Last Grade or Result */}
+            {/* Rank Info - REMOVED TEMPO / No AULAS */}
             <div className="grid grid-cols-12 gap-0 divide-x divide-black">
                 {isRightSide ? (
                     <>
@@ -131,15 +130,13 @@ const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, sens
                     </>
                 ) : (
                     <>
-                        <div className="col-span-4 p-0.5"><span className="font-bold mr-1">Faixa Atual:</span> {student.currentRank}</div>
-                        <div className="col-span-4 p-0.5 font-bold bg-gray-100 print:bg-gray-100"><span className="mr-1">Para Faixa:</span> {registration.targetRank}</div>
-                        <div className="col-span-2 p-0.5"><span className="font-bold mr-1">Tempo:</span></div>
-                        <div className="col-span-2 p-0.5"><span className="font-bold mr-1">Nº Aulas:</span></div>
+                        <div className="col-span-6 p-0.5"><span className="font-bold mr-1">Faixa Atual:</span> {student.currentRank}</div>
+                        <div className="col-span-6 p-0.5 font-bold bg-gray-100 print:bg-gray-100"><span className="mr-1">Para Faixa:</span> {registration.targetRank}</div>
                     </>
                 )}
             </div>
 
-            {/* Bottom Row Header */}
+            {/* Bottom Row Header - REMOVED NOTA ULTIMO EXAME */}
             <div className="border-t border-black">
                  {isRightSide ? (
                      <div className="grid grid-cols-12 divide-x divide-black">
@@ -161,10 +158,7 @@ const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, sens
                      </div>
                  ) : (
                      <div className="grid grid-cols-12 divide-x divide-black">
-                        <div className="col-span-3 p-0.5 border-r border-black flex items-center">
-                            <span className="font-bold leading-tight">Nota do último Exame:</span>
-                        </div>
-                        <div className="col-span-9 grid grid-cols-2 divide-x divide-black">
+                        <div className="col-span-12 grid grid-cols-2 divide-x divide-black">
                             <div className="text-center">
                                 <div className="border-b border-black text-[8px]">Conceito de Conduta</div>
                                 <div className="grid grid-cols-3 text-[8px]">
