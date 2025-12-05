@@ -65,6 +65,20 @@ const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, sens
         return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
     };
 
+    // Helper to get color class based on rank name
+    const getRankColorClasses = (rank: string) => {
+        const r = rank.toLowerCase();
+        // Uses print: classes to ensure colors appear when printing (if 'Background Graphics' is enabled)
+        if (r.includes('amarela')) return 'bg-yellow-300 print:bg-yellow-300';
+        if (r.includes('vermelha')) return 'bg-red-600 text-white print:bg-red-600 print:text-white';
+        if (r.includes('laranja')) return 'bg-orange-400 print:bg-orange-400';
+        if (r.includes('verde')) return 'bg-green-600 text-white print:bg-green-600 print:text-white';
+        if (r.includes('roxa')) return 'bg-purple-700 text-white print:bg-purple-700 print:text-white';
+        if (r.includes('marrom')) return 'bg-[#5D4037] text-white print:bg-[#5D4037] print:text-white';
+        if (r.includes('preta')) return 'bg-black text-white print:bg-black print:text-white';
+        return 'bg-white print:bg-white'; // Default/White/Greyish
+    };
+
     return (
         <div className="border-2 border-black mb-1 text-[9px] text-black">
             {/* Title Block */}
@@ -97,15 +111,16 @@ const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, sens
                 </div>
             </div>
             
-            {/* Admission/Age - REMOVED DATA ADMISSAO */}
+            {/* Admission/Age */}
             <div className="grid grid-cols-12 gap-0 divide-x divide-black border-b border-black">
                 {isRightSide ? (
                      <div className="col-span-12 p-0.5 grid grid-cols-12">
-                        <div className="col-span-8 font-bold text-sm text-center">
+                        <div className="col-span-8 font-bold text-sm text-center flex items-center justify-center">
                             Resultado do Exame de Faixa:
                         </div>
-                        <div className="col-span-4 text-center border-l border-black bg-gray-100 print:bg-gray-100">
-                             <div className="text-[7px]">Para:</div>
+                        {/* Colored Box for Target Rank (Athlete Side) */}
+                        <div className={`col-span-4 text-center border-l border-black ${getRankColorClasses(registration.targetRank)}`}>
+                             <div className="text-[7px] opacity-80">Para:</div>
                              <div className="font-bold text-[10px] leading-none uppercase">{registration.targetRank}</div>
                         </div>
                      </div>
@@ -117,7 +132,7 @@ const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, sens
                 )}
             </div>
             
-            {/* Rank Info - REMOVED TEMPO / No AULAS */}
+            {/* Rank Info */}
             <div className="grid grid-cols-12 gap-0 divide-x divide-black">
                 {isRightSide ? (
                     <>
@@ -131,12 +146,18 @@ const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, sens
                 ) : (
                     <>
                         <div className="col-span-6 p-0.5"><span className="font-bold mr-1">Faixa Atual:</span> {student.currentRank}</div>
-                        <div className="col-span-6 p-0.5 font-bold bg-gray-100 print:bg-gray-100"><span className="mr-1">Para Faixa:</span> {registration.targetRank}</div>
+                        {/* Colored Box for Target Rank (Federation Side) */}
+                        <div className="col-span-6 p-0 flex items-stretch">
+                            <span className="font-bold mr-1 p-0.5 bg-gray-100 print:bg-gray-100 border-r border-black flex items-center">Para Faixa:</span> 
+                            <span className={`flex-1 flex items-center justify-center font-bold uppercase text-[9px] ${getRankColorClasses(registration.targetRank)}`}>
+                                {registration.targetRank}
+                            </span>
+                        </div>
                     </>
                 )}
             </div>
 
-            {/* Bottom Row Header - REMOVED NOTA ULTIMO EXAME */}
+            {/* Bottom Row Header */}
             <div className="border-t border-black">
                  {isRightSide ? (
                      <div className="grid grid-cols-12 divide-x divide-black">
