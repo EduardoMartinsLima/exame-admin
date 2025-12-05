@@ -12,6 +12,19 @@ const generateId = (): string => {
   return crypto.randomUUID();
 };
 
+// Helper for retry logic
+const fetchWithRetry = async <T>(operation: () => Promise<T>, retries = 3, delay = 1000): Promise<T> => {
+    try {
+        return await operation();
+    } catch (error) {
+        if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return fetchWithRetry(operation, retries - 1, delay * 2);
+        }
+        throw error;
+    }
+};
+
 export const storageService = {
   generateId,
 
@@ -44,20 +57,31 @@ export const storageService = {
   // --- Fetch All Data ---
   getData: async (): Promise<AppData> => {
     try {
-      const [senseisRes, studentsRes, examsRes, regsRes] = await Promise.all([
-        supabase.from('senseis').select('*'),
-        supabase.from('students').select('*'),
-        supabase.from('exams').select('*'),
-        supabase.from('exam_registrations').select('*')
-      ]);
+      const fetchData = async () => {
+          const [senseisRes, studentsRes, examsRes, regsRes] = await Promise.all([
+            supabase.from('senseis').select('*'),
+            supabase.from('students').select('*'),
+            supabase.from('exams').select('*'),
+            supabase.from('exam_registrations').select('*')
+          ]);
 
-      if (senseisRes.error) throw senseisRes.error;
-      if (studentsRes.error) throw studentsRes.error;
-      if (examsRes.error) throw examsRes.error;
-      if (regsRes.error) throw regsRes.error;
+          if (senseisRes.error) throw senseisRes.error;
+          if (studentsRes.error) throw studentsRes.error;
+          if (examsRes.error) throw examsRes.error;
+          if (regsRes.error) throw regsRes.error;
+
+          return {
+              senseis: senseisRes.data || [],
+              students: studentsRes.data || [],
+              exams: examsRes.data || [],
+              registrations: regsRes.data || []
+          };
+      };
+
+      const rawData = await fetchWithRetry(fetchData);
 
       // Map DB snake_case to App camelCase
-      const students: Student[] = (studentsRes.data || []).map((s: any) => ({
+      const students: Student[] = (rawData.students || []).map((s: any) => ({
         id: s.id,
         name: s.name,
         cpf: s.cpf,
@@ -67,7 +91,7 @@ export const storageService = {
         senseiId: s.sensei_id
       }));
 
-      const registrations: ExamRegistration[] = (regsRes.data || []).map((r: any) => ({
+      const registrations: ExamRegistration[] = (rawData.registrations || []).map((r: any) => ({
         id: r.id,
         examId: r.exam_id,
         studentId: r.student_id,
@@ -82,13 +106,14 @@ export const storageService = {
       }));
 
       return {
-        senseis: senseisRes.data || [],
+        senseis: rawData.senseis || [],
         students,
-        exams: examsRes.data || [],
+        exams: rawData.exams || [],
         registrations
       };
     } catch (error) {
       console.error("Error fetching data from Supabase:", JSON.stringify(error));
+      // Return empty structure on failure to prevent app crash
       return { senseis: [], students: [], exams: [], registrations: [] };
     }
   },
@@ -210,8 +235,6 @@ export const storageService = {
     
     if ('average' in updates) dbUpdates.average = updates.average;
     if ('pass' in updates) dbUpdates.pass = updates.pass;
-
-    // console.log("Updating registration", regId, "with payload:", dbUpdates);
 
     const { error } = await supabase.from('exam_registrations').update(dbUpdates).eq('id', regId);
     

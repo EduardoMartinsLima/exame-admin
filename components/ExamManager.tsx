@@ -292,9 +292,9 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
     <>
         {/* PRINT PREVIEW PORTAL */}
         {showPrintPreview && printData && createPortal(
-            <div className="fixed inset-0 z-[9999] bg-gray-900 flex flex-col h-screen w-screen">
+            <div id="print-preview-portal" className="fixed inset-0 z-[9999] bg-gray-900 flex flex-col h-screen w-screen">
                 {/* Header Actions */}
-                <div className="bg-white border-b p-4 flex flex-col md:flex-row justify-between items-center shadow-md print:hidden gap-4">
+                <div className="bg-white border-b p-4 flex flex-col md:flex-row justify-between items-center shadow-md print-hidden gap-4">
                     <div className="text-center md:text-left">
                         <h2 className="text-xl font-bold text-gray-800 flex items-center justify-center md:justify-start">
                             <FileText className="mr-2" /> Visualização de Fichas
@@ -323,25 +323,56 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
                 </div>
 
                 {/* Print Content Area - Scrollable Preview */}
-                <div className="flex-1 overflow-auto p-4 md:p-8 bg-gray-500" id="print-scroll-container">
+                <div className="flex-1 overflow-auto p-4 md:p-8 bg-gray-500 print-scroll-container">
                     <style>{`
                         @media print {
-                            body > *:not(#print-mount-point) { display: none !important; }
-                            #print-mount-point { 
+                            /* Hide everything in body by default */
+                            body > *:not(#print-preview-portal) { display: none !important; }
+                            
+                            /* Ensure the portal wrapper is visible and formatted for print */
+                            #print-preview-portal { 
                                 display: block !important; 
                                 position: absolute;
                                 top: 0; left: 0; width: 100%;
+                                height: auto !important;
+                                z-index: 9999;
                                 background: white;
+                                margin: 0; padding: 0;
+                                overflow: visible !important;
                             }
-                            @page { size: A4 landscape; margin: 0; }
+
+                            /* Reset scroll containers inside the portal to avoid clipping */
+                            .print-scroll-container {
+                                overflow: visible !important;
+                                height: auto !important;
+                                display: block !important;
+                            }
+
+                            /* Hide non-print elements inside portal (like the header buttons) */
+                            .print-hidden { display: none !important; }
+                            
+                            /* Page settings */
+                            @page { 
+                                size: A4 landscape; 
+                                margin: 0; 
+                            }
+
+                            /* Sheet Page Logic */
                             .sheet-page {
                                 page-break-after: always;
                                 break-after: page;
                                 width: 297mm;
                                 height: 210mm;
                                 overflow: hidden;
+                                margin: 0 !important;
+                                padding: 5mm !important; /* Internal safety margin */
+                                box-sizing: border-box;
+                                display: block;
                             }
-                            .sheet-page:last-child { page-break-after: avoid; }
+                            .sheet-page:last-child { 
+                                page-break-after: avoid; 
+                                break-after: avoid;
+                            }
                         }
                     `}</style>
                     
@@ -364,7 +395,7 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
         )}
 
         {/* MAIN INTERFACE */}
-        <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto xl:h-[calc(100vh-8rem)] print:hidden`}>
+        <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto xl:h-[calc(100vh-8rem)] print-hidden`}>
         
         {/* Left Column: Create/Edit & List */}
         <div className="lg:col-span-1 flex flex-col gap-6 overflow-hidden min-h-0">
@@ -507,7 +538,7 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
                                 title="Visualizar e Baixar Fichas"
                             >
                                 <Download size={16} className="mr-1.5" />
-                                Baixar Fichas PDF
+                                Imprimir Fichas
                             </button>
 
                             <button
