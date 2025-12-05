@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Exam, Student, ExamRegistration, Rank, Sensei } from '../types';
 import { storageService } from '../services/storageService';
@@ -36,8 +36,7 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
   // Sorting State
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
 
-  // Print Preview State
-  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  // Print Data State
   const [printData, setPrintData] = useState<{
       items: Array<{
           student: Student;
@@ -47,6 +46,28 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
       }>
   } | null>(null);
 
+  // Ref to track if we are waiting for a print render
+  const isWaitingForPrintRef = useRef(false);
+
+  // Effect to trigger print once data is available in DOM
+  useEffect(() => {
+    if (printData && printData.items.length > 0 && isWaitingForPrintRef.current) {
+        // Give React a moment to flush changes to DOM
+        const timer = setTimeout(() => {
+            window.print();
+            isWaitingForPrintRef.current = false;
+            // Optional: clear data after print dialogue closes (user interaction)
+            // setPrintData(null); 
+        }, 500);
+        return () => clearTimeout(timer);
+    }
+  }, [printData]);
+
+  const triggerPrint = (data: any) => {
+      setPrintData(data);
+      isWaitingForPrintRef.current = true;
+  };
+
   const handlePrintSingle = (reg: ExamRegistration) => {
       const student = students.find(s => s.id === reg.studentId);
       const exam = exams.find(e => e.id === reg.examId);
@@ -54,7 +75,7 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
 
       const sensei = senseis.find(s => s.id === student.senseiId);
       
-      setPrintData({
+      triggerPrint({
           items: [{
               student,
               registration: reg,
@@ -62,7 +83,6 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
               senseiName: sensei?.name || '-'
           }]
       });
-      setShowPrintPreview(true);
   };
 
   const handlePrintBatch = () => {
@@ -86,8 +106,12 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
         return;
     }
 
-    setPrintData({ items });
-    setShowPrintPreview(true);
+    triggerPrint({ items });
+  };
+
+  const closePrintPreview = () => {
+      setPrintData(null);
+      isWaitingForPrintRef.current = false;
   };
 
   // Helper to format date avoiding timezone issues
@@ -290,74 +314,50 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
 
   return (
     <>
-        {/* PRINT PREVIEW PORTAL */}
-        {showPrintPreview && printData && createPortal(
-            <div id="print-preview-portal" className="fixed inset-0 z-[9999] bg-gray-900 flex flex-col h-screen w-screen">
-                {/* Header Actions */}
-                <div className="bg-white border-b p-4 flex flex-col md:flex-row justify-between items-center shadow-md print-hidden gap-4">
-                    <div className="text-center md:text-left">
-                        <h2 className="text-xl font-bold text-gray-800 flex items-center justify-center md:justify-start">
-                            <FileText className="mr-2" /> Visualização de Fichas
-                            <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                                {printData.items.length} aluno(s)
-                            </span>
-                        </h2>
-                        <p className="text-sm text-gray-500 mt-1">
-                            Verifique se as fichas estão corretas abaixo. Para salvar, clique em "Salvar como PDF".
-                        </p>
-                    </div>
-                    <div className="flex gap-3 w-full md:w-auto">
-                        <button 
-                            onClick={() => setShowPrintPreview(false)}
-                            className="flex-1 md:flex-none px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md font-medium transition-colors"
-                        >
-                            Fechar
-                        </button>
-                        <button 
-                            onClick={() => window.print()}
-                            className="flex-1 md:flex-none px-6 py-3 bg-red-600 text-white hover:bg-red-700 rounded-md font-bold shadow-sm flex items-center justify-center transition-colors"
-                        >
-                            <Download size={20} className="mr-2" /> Salvar como PDF
-                        </button>
-                    </div>
+        {/* PRINT PORTAL */}
+        {printData && createPortal(
+            <div id="print-portal-wrapper" className="fixed inset-0 z-[9999] bg-white flex flex-col h-screen w-screen">
+                {/* Overlay Message - Shows while waiting for print dialog or if user cancels */}
+                <div className="fixed inset-0 bg-gray-900 bg-opacity-90 flex flex-col items-center justify-center z-[10000] print-hidden">
+                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
+                     <h2 className="text-2xl font-bold text-white mb-2">Preparando Documento...</h2>
+                     <p className="text-gray-300 mb-6">A janela de impressão abrirá automaticamente.</p>
+                     <button 
+                        onClick={closePrintPreview}
+                        className="px-6 py-2 bg-white text-gray-900 rounded-md font-bold hover:bg-gray-100 transition-colors"
+                     >
+                        Cancelar / Fechar
+                     </button>
                 </div>
 
-                {/* Print Content Area - Scrollable Preview */}
-                <div className="flex-1 overflow-auto p-4 md:p-8 bg-gray-500 print-scroll-container">
+                {/* Print Content Area */}
+                <div className="w-full h-full bg-white">
                     <style>{`
                         @media print {
-                            /* Hide everything in body by default */
-                            body > *:not(#print-preview-portal) { display: none !important; }
+                            body > *:not(#print-portal-wrapper) { display: none !important; }
                             
-                            /* Ensure the portal wrapper is visible and formatted for print */
-                            #print-preview-portal { 
+                            #print-portal-wrapper { 
                                 display: block !important; 
                                 position: absolute;
                                 top: 0; left: 0; width: 100%;
-                                height: auto !important;
-                                z-index: 9999;
                                 background: white;
                                 margin: 0; padding: 0;
                                 overflow: visible !important;
                             }
-
-                            /* Reset scroll containers inside the portal to avoid clipping */
-                            .print-scroll-container {
-                                overflow: visible !important;
-                                height: auto !important;
-                                display: block !important;
-                            }
-
-                            /* Hide non-print elements inside portal (like the header buttons) */
+                            
                             .print-hidden { display: none !important; }
                             
-                            /* Page settings */
                             @page { 
                                 size: A4 landscape; 
                                 margin: 0; 
                             }
+                            
+                            body {
+                                margin: 0;
+                                padding: 0;
+                                background-color: white !important;
+                            }
 
-                            /* Sheet Page Logic */
                             .sheet-page {
                                 page-break-after: always;
                                 break-after: page;
@@ -365,7 +365,7 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
                                 height: 210mm;
                                 overflow: hidden;
                                 margin: 0 !important;
-                                padding: 5mm !important; /* Internal safety margin */
+                                padding: 5mm !important;
                                 box-sizing: border-box;
                                 display: block;
                             }
@@ -376,10 +376,10 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
                         }
                     `}</style>
                     
-                    {/* Centered Sheets Container */}
-                    <div id="print-mount-point" className="mx-auto w-fit">
+                    {/* Sheets Container */}
+                    <div className="mx-auto w-fit">
                         {printData.items.map((item, index) => (
-                            <div key={index} className="sheet-page bg-white shadow-xl mb-8 mx-auto print:shadow-none print:mb-0" style={{ width: '297mm', height: '210mm' }}>
+                            <div key={index} className="sheet-page bg-white shadow-none mb-0" style={{ width: '297mm', height: '210mm' }}>
                                 <ExamSheet 
                                     student={item.student}
                                     exam={item.exam}
@@ -538,7 +538,7 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
                                 title="Visualizar e Baixar Fichas"
                             >
                                 <Download size={16} className="mr-1.5" />
-                                Imprimir Fichas
+                                Baixar Fichas (PDF)
                             </button>
 
                             <button

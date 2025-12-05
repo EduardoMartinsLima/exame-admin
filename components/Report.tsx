@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AppData, Rank } from '../types';
 import { RANKS } from '../constants';
@@ -21,8 +21,30 @@ export const Report: React.FC<Props> = ({ data }) => {
   const [filterExam, setFilterExam] = useState<string>('');
   const [sortBy, setSortBy] = useState<SortOption>('rank');
 
-  // Print Preview State
-  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  // Print/PDF State
+  const [printingSheets, setPrintingSheets] = useState<{
+        fullStudent: any;
+        fullExam: any;
+        registration: any;
+        senseiName: string;
+  }[] | null>(null);
+
+  // Ref to track print readiness
+  const isWaitingForPrintRef = useRef(false);
+
+  // Auto-trigger print once content is rendered
+  useEffect(() => {
+    if (printingSheets && printingSheets.length > 0 && isWaitingForPrintRef.current) {
+        const timer = setTimeout(() => {
+            window.print();
+            isWaitingForPrintRef.current = false;
+            // Optionally clear to close preview automatically
+            // setPrintingSheets(null);
+        }, 500);
+        return () => clearTimeout(timer);
+    }
+  }, [printingSheets]);
+
 
   // Helper to format date avoiding timezone issues
   const formatDate = (dateString: string | undefined) => {
@@ -90,8 +112,21 @@ export const Report: React.FC<Props> = ({ data }) => {
     window.print();
   };
 
-  const handleOpenSheetPreview = () => {
-      setShowPrintPreview(true);
+  const handleDirectDownloadPDF = () => {
+      // Prepare data for sheets
+      const sheets = sortedData.map(item => ({
+        fullStudent: item.fullStudent,
+        fullExam: item.fullExam,
+        registration: item,
+        senseiName: item.senseiName
+      }));
+      setPrintingSheets(sheets);
+      isWaitingForPrintRef.current = true;
+  };
+  
+  const closePrintPreview = () => {
+      setPrintingSheets(null);
+      isWaitingForPrintRef.current = false;
   };
 
   const selectedExamDetails = data.exams.find(e => e.id === filterExam);
@@ -102,55 +137,38 @@ export const Report: React.FC<Props> = ({ data }) => {
   return (
     <div className="space-y-6">
       {/* 
-          PRINT PREVIEW PORTAL (For Exam Sheets)
-          Opens a dedicated full-screen view for the user to verify and print.
+          PRINT PORTAL (Automatic)
       */}
-      {showPrintPreview && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-gray-900 flex flex-col h-screen w-screen">
-            {/* Header Actions - Hidden on Print */}
-            <div className="bg-white border-b p-4 flex flex-col md:flex-row justify-between items-center shadow-md print:hidden gap-4">
-                <div className="text-center md:text-left">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center justify-center md:justify-start">
-                        <FileBadge className="mr-2" /> Visualização de Fichas
-                        <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                            {sortedData.length} aluno(s)
-                        </span>
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Verifique as fichas abaixo. Clique no botão para imprimir ou salvar como PDF.
-                    </p>
-                </div>
-                <div className="flex gap-3 w-full md:w-auto">
-                    <button 
-                        onClick={() => setShowPrintPreview(false)}
-                        className="flex-1 md:flex-none px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md font-medium transition-colors"
-                    >
-                        Fechar
-                    </button>
-                    <button 
-                        onClick={() => window.print()}
-                        className="flex-1 md:flex-none px-6 py-3 bg-red-600 text-white hover:bg-red-700 rounded-md font-bold shadow-sm flex items-center justify-center transition-colors"
-                    >
-                        <Download size={20} className="mr-2" /> Salvar como PDF
-                    </button>
-                </div>
+      {printingSheets && createPortal(
+        <div id="print-portal-wrapper" className="fixed inset-0 z-[9999] bg-white flex flex-col h-screen w-screen">
+            {/* Overlay Message - Hidden on Print */}
+            <div className="fixed inset-0 bg-gray-900 bg-opacity-90 flex flex-col items-center justify-center z-[10000] print-hidden">
+                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
+                 <h2 className="text-2xl font-bold text-white mb-2">Preparando Documento...</h2>
+                 <p className="text-gray-300 mb-6">A janela de impressão abrirá automaticamente.</p>
+                 <button 
+                    onClick={closePrintPreview}
+                    className="px-6 py-2 bg-white text-gray-900 rounded-md font-bold hover:bg-gray-100 transition-colors"
+                 >
+                    Cancelar / Fechar
+                 </button>
             </div>
 
-            {/* Scrollable Preview Area */}
-            <div className="flex-1 overflow-auto p-4 md:p-8 bg-gray-500" id="print-scroll-container">
+            <div className="w-full h-full bg-white">
                 <style>{`
                     @media print {
-                        /* Hide everything in body by default */
-                        body > * { display: none !important; }
+                        body > *:not(#print-portal-wrapper) { display: none !important; }
                         
-                        /* Show ONLY the print mount point */
-                        #print-mount-point { 
+                        #print-portal-wrapper { 
                             display: block !important; 
                             position: absolute;
                             top: 0; left: 0; width: 100%;
                             background: white;
                             margin: 0; padding: 0;
+                            overflow: visible !important;
                         }
+                        
+                        .print-hidden { display: none !important; }
                         
                         @page { 
                             size: A4 landscape; 
@@ -172,6 +190,7 @@ export const Report: React.FC<Props> = ({ data }) => {
                             margin: 0 !important;
                             padding: 5mm !important;
                             box-sizing: border-box;
+                            display: block;
                         }
                         .sheet-page:last-child { 
                             page-break-after: avoid; 
@@ -181,14 +200,14 @@ export const Report: React.FC<Props> = ({ data }) => {
                 `}</style>
                 
                 {/* Sheets Container */}
-                <div id="print-mount-point" className="mx-auto w-fit">
-                    {sortedData.map((item, index) => (
-                        <div key={index} className="sheet-page bg-white shadow-xl mb-8 mx-auto print:shadow-none print:mb-0" style={{ width: '297mm', height: '210mm' }}>
+                <div className="mx-auto w-fit">
+                    {printingSheets.map((item, index) => (
+                        <div key={index} className="sheet-page bg-white shadow-none mb-0" style={{ width: '297mm', height: '210mm' }}>
                             {item.fullStudent && item.fullExam && (
                                 <ExamSheet 
                                     student={item.fullStudent} 
                                     exam={item.fullExam} 
-                                    registration={item}
+                                    registration={item.registration}
                                     senseiName={item.senseiName}
                                 />
                             )}
@@ -309,7 +328,7 @@ export const Report: React.FC<Props> = ({ data }) => {
          <div className="flex items-center gap-2 flex-wrap">
              {reportType === 'exam_sheets' ? (
                  <button 
-                    onClick={handleOpenSheetPreview}
+                    onClick={handleDirectDownloadPDF}
                     disabled={!filterExam || sortedData.length === 0}
                     className="flex items-center bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 transition-colors text-sm whitespace-nowrap shadow-md disabled:opacity-50 font-bold"
                  >
