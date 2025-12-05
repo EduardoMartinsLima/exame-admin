@@ -110,7 +110,7 @@ const App: React.FC = () => {
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       {/* Sidebar - Desktop (Collapsible) */}
       <aside 
-        className={`hidden md:flex flex-col bg-red-900 shadow-xl z-10 transition-all duration-300 ease-in-out ${
+        className={`hidden md:flex flex-col bg-red-900 shadow-xl z-10 transition-all duration-300 ease-in-out print:hidden ${
             isSidebarCollapsed ? 'w-20' : 'w-64'
         }`}
       >
@@ -164,7 +164,7 @@ const App: React.FC = () => {
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 w-full bg-red-900 text-white z-20 flex justify-between items-center p-4 shadow-md">
+      <div className="md:hidden fixed top-0 w-full bg-red-900 text-white z-20 flex justify-between items-center p-4 shadow-md print:hidden">
         <div className="flex items-center">
             <KarateLogo className="mr-2" size={24} />
             <span className="font-bold text-lg">KarateAdmin</span>
@@ -184,7 +184,7 @@ const App: React.FC = () => {
       {isMobileMenuOpen && (
         <div 
           id="mobile-menu"
-          className="fixed inset-0 bg-gray-800 bg-opacity-75 z-30 md:hidden transition-opacity duration-300" 
+          className="fixed inset-0 bg-gray-800 bg-opacity-75 z-30 md:hidden transition-opacity duration-300 print:hidden" 
           onClick={() => setIsMobileMenuOpen(false)}
           role="dialog"
           aria-modal="true"
@@ -214,8 +214,8 @@ const App: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto md:pt-0 pt-16 transition-all duration-300">
-        <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      <main className="flex-1 overflow-auto md:pt-0 pt-16 transition-all duration-300 print:overflow-visible">
+        <div className="p-4 md:p-6 max-w-7xl mx-auto print:p-0 print:m-0 print:max-w-none">
           {isDataLoading ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-900"></div>

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AppData, Rank } from '../types';
 import { RANKS } from '../constants';
-import { FileText, Filter, ArrowUpDown, Printer, Users, Trophy, ClipboardCheck, Award, List, FileBadge, Download } from 'lucide-react';
+import { FileText, Filter, ArrowUpDown, Printer, Users, Trophy, ClipboardCheck, List, FileBadge, Download } from 'lucide-react';
 import { KarateLogo } from './KarateLogo';
 import { ExamSheet } from './ExamSheet';
 
@@ -14,12 +15,14 @@ type ReportType = 'results' | 'exam_list' | 'approval_list' | 'student_list' | '
 
 export const Report: React.FC<Props> = ({ data }) => {
   const [reportType, setReportType] = useState<ReportType>('results');
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   const [filterRank, setFilterRank] = useState<string>('');
   const [filterSensei, setFilterSensei] = useState<string>('');
   const [filterExam, setFilterExam] = useState<string>('');
   const [sortBy, setSortBy] = useState<SortOption>('rank');
+
+  // Print Preview State
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   // Helper to format date avoiding timezone issues
   const formatDate = (dateString: string | undefined) => {
@@ -83,58 +86,12 @@ export const Report: React.FC<Props> = ({ data }) => {
     return rankA - rankB;
   });
 
-  const handlePrint = () => {
+  const handlePrintStandardReport = () => {
     window.print();
   };
 
-  const handlePrintSheetsDirectly = () => {
-      setReportType('exam_sheets');
-      setSortBy('name');
-      // Allow React to render the sheets view before printing
-      setTimeout(() => {
-          window.print();
-      }, 500);
-  };
-
-  const handleDownloadPDF = async () => {
-    const element = document.getElementById('exam-sheets-container');
-    if (!element) return;
-
-    const html2pdf = (window as any).html2pdf;
-    if (!html2pdf) {
-        alert('Biblioteca de geração de PDF não está disponível. Por favor, use o botão "Imprimir Fichas" e selecione "Salvar como PDF".');
-        return;
-    }
-
-    setIsGeneratingPdf(true);
-
-    // Prepare DOM for clean PDF generation
-    // Remove shadows and spacing to prevent artifacts
-    const originalShadows = document.querySelectorAll('.exam-sheet-page');
-    originalShadows.forEach(el => el.classList.remove('shadow-xl'));
-    
-    // Temporarily remove spacing class from container to ensure tight packing for pages
-    element.classList.remove('space-y-8');
-
-    const opt = {
-      margin: 0,
-      filename: `fichas_exame_${selectedExamDetails?.date || 'geral'}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-    };
-
-    try {
-        await html2pdf().set(opt).from(element).save();
-    } catch (err) {
-        console.error('PDF Generation Error:', err);
-        alert('Erro ao gerar PDF. Tente usar a opção de Imprimir.');
-    } finally {
-        // Restore DOM
-        originalShadows.forEach(el => el.classList.add('shadow-xl'));
-        element.classList.add('space-y-8');
-        setIsGeneratingPdf(false);
-    }
+  const handleOpenSheetPreview = () => {
+      setShowPrintPreview(true);
   };
 
   const selectedExamDetails = data.exams.find(e => e.id === filterExam);
@@ -144,102 +101,156 @@ export const Report: React.FC<Props> = ({ data }) => {
 
   return (
     <div className="space-y-6">
-      {/* CSS for printing */}
-      <style>{`
-        /* CSS Specific for Screen Preview of Sheets */
-        .exam-sheet-page {
-             width: 297mm; 
-             height: 210mm;
-             margin: 0 auto 2rem auto;
-             background-color: white;
-             /* Ensure content shows up */
-             display: block; 
-             overflow: hidden;
-             box-sizing: border-box; /* Important: Include padding in width calculation */
-             padding: 5mm; /* Uniform 5mm margin on all sides */
-        }
+      {/* 
+          PRINT PREVIEW PORTAL (For Exam Sheets)
+          Opens a dedicated full-screen view for the user to verify and print.
+      */}
+      {showPrintPreview && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-gray-900 flex flex-col h-screen w-screen">
+            {/* Header Actions - Hidden on Print */}
+            <div className="bg-white border-b p-4 flex flex-col md:flex-row justify-between items-center shadow-md print:hidden gap-4">
+                <div className="text-center md:text-left">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center justify-center md:justify-start">
+                        <FileBadge className="mr-2" /> Visualização de Fichas
+                        <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            {sortedData.length} aluno(s)
+                        </span>
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Verifique as fichas abaixo. Clique no botão para imprimir ou salvar como PDF.
+                    </p>
+                </div>
+                <div className="flex gap-3 w-full md:w-auto">
+                    <button 
+                        onClick={() => setShowPrintPreview(false)}
+                        className="flex-1 md:flex-none px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md font-medium transition-colors"
+                    >
+                        Fechar
+                    </button>
+                    <button 
+                        onClick={() => window.print()}
+                        className="flex-1 md:flex-none px-6 py-3 bg-red-600 text-white hover:bg-red-700 rounded-md font-bold shadow-sm flex items-center justify-center transition-colors"
+                    >
+                        <Download size={20} className="mr-2" /> Salvar como PDF
+                    </button>
+                </div>
+            </div>
 
+            {/* Scrollable Preview Area */}
+            <div className="flex-1 overflow-auto p-4 md:p-8 bg-gray-500" id="print-scroll-container">
+                <style>{`
+                    @media print {
+                        /* Hide everything in body by default */
+                        body > * { display: none !important; }
+                        
+                        /* Show ONLY the print mount point */
+                        #print-mount-point { 
+                            display: block !important; 
+                            position: absolute;
+                            top: 0; left: 0; width: 100%;
+                            background: white;
+                            margin: 0; padding: 0;
+                        }
+                        
+                        @page { 
+                            size: A4 landscape; 
+                            margin: 0; 
+                        }
+                        
+                        body {
+                            background-color: white !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+
+                        .sheet-page {
+                            page-break-after: always;
+                            break-after: page;
+                            width: 297mm;
+                            height: 210mm;
+                            overflow: hidden;
+                            margin: 0 !important;
+                            padding: 5mm !important;
+                            box-sizing: border-box;
+                        }
+                        .sheet-page:last-child { 
+                            page-break-after: avoid; 
+                            break-after: avoid; 
+                        }
+                    }
+                `}</style>
+                
+                {/* Sheets Container */}
+                <div id="print-mount-point" className="mx-auto w-fit">
+                    {sortedData.map((item, index) => (
+                        <div key={index} className="sheet-page bg-white shadow-xl mb-8 mx-auto print:shadow-none print:mb-0" style={{ width: '297mm', height: '210mm' }}>
+                            {item.fullStudent && item.fullExam && (
+                                <ExamSheet 
+                                    student={item.fullStudent} 
+                                    exam={item.fullExam} 
+                                    registration={item}
+                                    senseiName={item.senseiName}
+                                />
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 
+          STANDARD REPORT PRINT CSS
+          This handles the 'Print Report' button for tables (not sheets).
+      */}
+      <style>{`
         @media print {
+          /* General resets for standard reports */
           @page { 
-            /* A4 Landscape Dimensions */
-            size: A4 landscape;
-            /* Dynamic Margin: 0 for sheets (controlled by padding), 10mm for table reports */
-            margin: ${reportType === 'exam_sheets' ? '0' : '10mm'}; 
+             /* Only if NOT in preview mode (which overrides this) */
+             margin: 10mm;
+             size: A4 landscape;
           }
+          
           body {
-            margin: 0;
-            padding: 0;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            background-color: white !important;
           }
-          /* Hide everything by default */
-          body * {
-            visibility: hidden;
-          }
-          /* Show only the report content container */
+          
+          /* Hide main UI if we are printing a standard report directly from the main view */
+          body > *:not(#root) { display: none; } /* Just a fallback */
+          
+          .no-print { display: none !important; }
+          
+          /* Ensure the report content block is visible */
           #report-content, #report-content * {
             visibility: visible;
           }
           
           #report-content {
             position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 0;
+            left: 0; top: 0; width: 100%;
+            margin: 0; padding: 0;
             background: white;
+            border: none !important;
+            box-shadow: none !important;
           }
-          
-          .no-print {
-            display: none !important;
-          }
-          
-          ${reportType === 'exam_sheets' ? `
-              /* Styles specific to Exam Sheets Print Mode */
-              .exam-sheet-page {
-                  page-break-after: always;
-                  break-after: page;
-                  width: 297mm;
-                  height: 210mm;
-                  margin: 0;
-                  padding: 5mm 5mm 15mm 5mm; /* Extra bottom margin for print */
-                  box-sizing: border-box; /* Crucial for correct A4 fit */
-                  box-shadow: none;
-                  border: none;
-              }
-              .exam-sheet-page:last-child {
-                  page-break-after: auto;
-                  break-after: auto;
-              }
-              /* Hide report headers in sheet mode */
-              .print-header, .report-view-header { display: none !important; }
-              
-              /* Ensure parent container doesn't restrict size */
-              #report-content {
-                 width: auto !important;
-                 height: auto !important;
-                 overflow: visible !important;
-                 position: static !important;
-              }
-          ` : `
-              /* Normal Report Styling Overrides */
-              #report-content { width: 100%; position: relative !important; }
-              table { width: 100% !important; border-collapse: collapse !important; }
-              th, td { border: 1px solid #000 !important; padding: 6px 8px !important; color: #000 !important; }
-              thead th { background-color: #f3f4f6 !important; font-weight: bold !important; color: #000 !important; }
-              .status-badge { border: 1px solid #000 !important; background: none !important; color: #000 !important; }
-              /* Hide print header on screen, show on print */
-              .print-header { display: flex !important; }
-              /* Hide screen header on print */
-              .report-view-header { display: none !important; }
-          `}
+
+          /* Show formal header for standard reports */
+          .print-header { display: flex !important; }
+          .report-view-header { display: none !important; }
+
+          /* Table Styling */
+          table { width: 100% !important; border-collapse: collapse !important; }
+          th, td { border: 1px solid #000 !important; padding: 4px 8px !important; color: black !important; font-size: 10pt; }
+          thead th { background-color: #eee !important; font-weight: bold !important; }
+          .status-badge { border: 1px solid #000 !important; background: none !important; color: #000 !important; }
         }
       `}</style>
 
       {/* Tabs / Header */}
-      <div className="flex flex-col xl:flex-row justify-between items-center bg-white p-4 rounded-lg shadow-sm no-print gap-4">
+      <div className="flex flex-col xl:flex-row justify-between items-center bg-white p-4 rounded-lg shadow-sm no-print gap-4 print:hidden">
          <div className="flex flex-wrap gap-2 bg-gray-100 p-1 rounded-lg w-full xl:w-auto overflow-x-auto">
             <button
                 onClick={() => setReportType('results')}
@@ -296,47 +307,27 @@ export const Report: React.FC<Props> = ({ data }) => {
          </div>
          
          <div className="flex items-center gap-2 flex-wrap">
-             {filterExam && reportType !== 'exam_sheets' && (
-                 <>
-                    <button 
-                        onClick={() => {
-                            setReportType('exam_sheets');
-                            setSortBy('name');
-                        }}
-                        className="flex items-center bg-white text-red-700 border border-red-200 px-4 py-2 rounded-md hover:bg-red-50 transition-colors text-sm whitespace-nowrap shadow-sm"
-                    >
-                        <FileBadge size={16} className="mr-2" /> <span className="hidden sm:inline">Visualizar Fichas</span>
-                    </button>
-                    <button 
-                        onClick={handlePrintSheetsDirectly}
-                        className="flex items-center bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors text-sm whitespace-nowrap shadow-lg"
-                    >
-                        <Printer size={16} className="mr-2" /> <span className="hidden sm:inline">Imprimir Fichas</span>
-                    </button>
-                 </>
-             )}
-             
-             {reportType === 'exam_sheets' && filterExam && (
+             {reportType === 'exam_sheets' ? (
                  <button 
-                    onClick={handleDownloadPDF}
-                    disabled={isGeneratingPdf}
-                    className="flex items-center bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-800 transition-colors text-sm whitespace-nowrap shadow-lg disabled:opacity-50"
+                    onClick={handleOpenSheetPreview}
+                    disabled={!filterExam || sortedData.length === 0}
+                    className="flex items-center bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 transition-colors text-sm whitespace-nowrap shadow-md disabled:opacity-50 font-bold"
                  >
-                    <Download size={16} className="mr-2" /> {isGeneratingPdf ? 'Gerando...' : 'Baixar PDF'}
+                    <Download size={18} className="mr-2" /> Baixar Fichas (PDF)
+                 </button>
+             ) : (
+                 <button 
+                    onClick={handlePrintStandardReport}
+                    className="flex items-center bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 transition-colors text-sm whitespace-nowrap shadow-lg"
+                 >
+                    <Printer size={16} className="mr-2" /> Imprimir Relatório
                  </button>
              )}
-
-             <button 
-                onClick={handlePrint}
-                className="flex items-center bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 transition-colors text-sm whitespace-nowrap shadow-lg"
-             >
-                <Printer size={16} className="mr-2" /> {reportType === 'exam_sheets' ? 'Imprimir Fichas' : 'Imprimir'}
-             </button>
          </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-6 rounded-lg shadow-md no-print border border-gray-100">
+      <div className="bg-white p-6 rounded-lg shadow-md no-print border border-gray-100 print:hidden">
         <h2 className="text-lg font-bold mb-4 flex items-center text-gray-800">
            <Filter className="mr-2" size={20} /> Filtros de Relatório
         </h2>
@@ -404,8 +395,8 @@ export const Report: React.FC<Props> = ({ data }) => {
         </div>
       </div>
 
-      {/* Report Content Area */}
-      <div id="report-content" className={`bg-white rounded-xl shadow-lg overflow-hidden min-h-[500px] border border-gray-200 ${reportType === 'exam_sheets' ? 'p-0 shadow-none border-none bg-gray-100' : ''}`}>
+      {/* Screen Report Content Area */}
+      <div id="report-content" className={`bg-white rounded-xl shadow-lg overflow-hidden min-h-[500px] border border-gray-200 ${reportType === 'exam_sheets' ? 'p-0 shadow-none border-none bg-gray-100' : ''} print:hidden`}>
         
         {/* Formal Header for Print (Hidden on Screen) */}
         <div className="print-header hidden flex-col items-center justify-center p-8 border-b-2 border-red-900 mb-2">
@@ -477,12 +468,24 @@ export const Report: React.FC<Props> = ({ data }) => {
              </div>
         )}
 
-        {/* EXAM SHEETS VIEW */}
+        {/* EXAM SHEETS SCREEN PREVIEW - Inline for Reports */}
         {reportType === 'exam_sheets' && filterExam && (
-             <div className="bg-gray-100 p-8 print:p-0 print:bg-white overflow-auto">
-                 <div id="exam-sheets-container" className="max-w-fit mx-auto print:max-w-none print:mx-0 space-y-8 print:space-y-0">
+             <div className="bg-gray-100 p-8 overflow-auto">
+                 <div className="max-w-fit mx-auto space-y-8">
                      {sortedData.map((item) => (
-                         <div key={item.id} className="bg-white shadow-xl print:shadow-none exam-sheet-page">
+                         <div key={item.id} className="bg-white shadow-xl exam-sheet-page-preview">
+                             <style>{`
+                                .exam-sheet-page-preview {
+                                    width: 297mm; 
+                                    height: 210mm;
+                                    margin: 0 auto 2rem auto;
+                                    background-color: white;
+                                    display: block; 
+                                    overflow: hidden;
+                                    box-sizing: border-box; 
+                                    padding: 5mm;
+                                }
+                             `}</style>
                              {item.fullStudent && item.fullExam && (
                                  <ExamSheet 
                                     student={item.fullStudent} 
@@ -607,7 +610,7 @@ export const Report: React.FC<Props> = ({ data }) => {
                 </div>
 
                 {/* Mobile Card List */}
-                <div className="md:hidden space-y-4 p-4 bg-gray-50">
+                <div className="md:hidden space-y-4 p-4 bg-gray-50 print:hidden">
                     {sortedData.map((row, idx) => (
                         <div key={idx} className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 relative overflow-hidden">
                             {/* Stripe for status or decoration */}

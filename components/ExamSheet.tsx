@@ -46,15 +46,25 @@ interface HeaderProps {
 }
 
 const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, senseiName, isRightSide }) => {
-    // Calculate Age
+    // Calculate Age based on Exam Date
     const getAge = (birthDateString?: string) => {
         if (!birthDateString) return '';
-        const today = new Date();
-        const birthDate = new Date(birthDateString);
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
+        
+        let targetDate = new Date();
+        if (exam.date) {
+             // Parse exam date explicitly (YYYY-MM-DD)
+             const [y, m, d] = exam.date.split('-').map(Number);
+             targetDate = new Date(y, m - 1, d);
+        }
+        
+        // Parse birth date explicitly
+        const [by, bm, bd] = birthDateString.split('-').map(Number);
+        const birthDate = new Date(by, bm - 1, bd);
+
+        let age = targetDate.getFullYear() - birthDate.getFullYear();
+        const m = targetDate.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && targetDate.getDate() < birthDate.getDate())) {
+            age--;
         }
         return age;
     };
@@ -114,14 +124,18 @@ const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, sens
             {/* Admission/Age */}
             <div className="grid grid-cols-12 gap-0 divide-x divide-black border-b border-black">
                 {isRightSide ? (
-                     <div className="col-span-12 p-0.5 grid grid-cols-12">
-                        <div className="col-span-8 font-bold text-sm text-center flex items-center justify-center">
-                            Resultado do Exame de Faixa:
+                     <div className="col-span-12 grid grid-cols-12 divide-x divide-black">
+                        {/* Age and Birth Date added here */}
+                        <div className="col-span-5 p-0.5 flex items-center justify-around text-[8px]">
+                             <div><span className="font-bold">Nasc.:</span> {formatDate(student.birthDate || '')}</div>
+                             <div><span className="font-bold">Idade:</span> {getAge(student.birthDate)}</div>
                         </div>
-                        {/* Colored Box for Target Rank (Athlete Side) - UPDATED: Single Line */}
-                        <div className={`col-span-4 flex items-center justify-center border-l border-black px-1 ${getRankColorClasses(registration.targetRank)}`}>
-                             <span className="text-[9px] font-bold mr-1 opacity-80">Para:</span>
-                             <span className="font-bold text-[10px] leading-none uppercase">{registration.targetRank}</span>
+                        <div className="col-span-4 font-bold text-[9px] text-center flex items-center justify-center bg-gray-50 print:bg-gray-50 p-0.5">
+                            Resultado
+                        </div>
+                        <div className={`col-span-3 flex items-center justify-center px-1 ${getRankColorClasses(registration.targetRank)}`}>
+                             <span className="text-[7px] font-bold mr-1 opacity-80">Para:</span>
+                             <span className="font-bold text-[9px] leading-none uppercase">{registration.targetRank}</span>
                         </div>
                      </div>
                 ) : (
