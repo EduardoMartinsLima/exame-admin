@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Student, Rank, Sensei } from '../types';
 import { RANKS } from '../constants';
 import { storageService } from '../services/storageService';
-import { Users, Upload, Save, Trash2, Pencil, X, Check, Search } from 'lucide-react';
+import { Users, Upload, Save, Trash2, Pencil, X, Check, Search, CheckSquare } from 'lucide-react';
 
 interface Props {
   students: Student[];
@@ -25,6 +25,9 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Batch Selection State
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -273,7 +276,49 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
            setDeletingId(null);
            onUpdate();
       }
-  }
+  };
+
+  // --- Batch Operations ---
+  
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.checked) {
+          setSelectedIds(students.map(s => s.id));
+      } else {
+          setSelectedIds([]);
+      }
+  };
+
+  const handleSelectOne = (id: string) => {
+      setSelectedIds(prev => {
+          if (prev.includes(id)) {
+              return prev.filter(p => p !== id);
+          } else {
+              return [...prev, id];
+          }
+      });
+  };
+
+  const handleBatchDelete = async () => {
+      if (selectedIds.length === 0) return;
+      
+      if (window.confirm(`Tem certeza que deseja excluir os ${selectedIds.length} alunos selecionados? Esta ação não pode ser desfeita.`)) {
+          setIsSubmitting(true);
+          try {
+              // Delete sequentially or parallel. Parallel is faster.
+              const promises = selectedIds.map(id => storageService.deleteStudent(id));
+              await Promise.all(promises);
+              
+              setSelectedIds([]);
+              onUpdate();
+              alert('Alunos excluídos com sucesso.');
+          } catch (error) {
+              console.error("Batch delete error:", error);
+              alert('Ocorreu um erro ao excluir alguns alunos.');
+          } finally {
+              setIsSubmitting(false);
+          }
+      }
+  };
 
   const getSenseiName = (senseiId?: string | null) => {
     if (!senseiId) return '-';
@@ -290,12 +335,26 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
           <h2 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center">
             <Users className="mr-2" /> {editingId ? 'Editar Aluno' : 'Cadastro de Alunos'}
           </h2>
-          <button 
-            onClick={() => setShowImport(!showImport)}
-            className="flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm md:text-base"
-          >
-            <Upload className="mr-1" size={18} /> Importar Excel (CSV)
-          </button>
+          
+          <div className="flex flex-wrap gap-3">
+              {selectedIds.length > 0 && (
+                  <button 
+                    onClick={handleBatchDelete}
+                    disabled={isSubmitting}
+                    className="flex items-center bg-red-100 text-red-700 px-3 py-1.5 rounded-md hover:bg-red-200 font-medium text-sm transition-colors border border-red-200"
+                  >
+                    <Trash2 className="mr-1.5" size={16} /> 
+                    Excluir ({selectedIds.length})
+                  </button>
+              )}
+              
+              <button 
+                onClick={() => setShowImport(!showImport)}
+                className="flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm md:text-base"
+              >
+                <Upload className="mr-1" size={18} /> Importar Excel (CSV)
+              </button>
+          </div>
         </div>
 
         {showImport && (
@@ -434,6 +493,14 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-100">
               <tr>
+                <th className="px-6 py-3 text-left">
+                    <input 
+                        type="checkbox" 
+                        onChange={handleSelectAll}
+                        checked={students.length > 0 && selectedIds.length === students.length}
+                        className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                    />
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faixa</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sensei</th>
@@ -444,8 +511,17 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
             <tbody className="bg-white divide-y divide-gray-200">
               {students.map(student => {
                  const isDeleting = deletingId === student.id;
+                 const isSelected = selectedIds.includes(student.id);
                  return (
-                  <tr key={student.id} className="hover:bg-gray-50">
+                  <tr key={student.id} className={`hover:bg-gray-50 ${isSelected ? 'bg-red-50' : ''}`}>
+                    <td className="px-6 py-4">
+                        <input 
+                            type="checkbox" 
+                            checked={isSelected}
+                            onChange={() => handleSelectOne(student.id)}
+                            className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                        />
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-200">
@@ -501,7 +577,7 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
               )})}
               {students.length === 0 && (
                   <tr>
-                      <td colSpan={5} className="px-6 py-10 text-center text-gray-500">Nenhum aluno cadastrado.</td>
+                      <td colSpan={6} className="px-6 py-10 text-center text-gray-500">Nenhum aluno cadastrado.</td>
                   </tr>
               )}
             </tbody>
@@ -516,16 +592,27 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
                 <div className="grid grid-cols-1 gap-4 p-4">
                     {students.map(student => {
                         const isDeleting = deletingId === student.id;
+                        const isSelected = selectedIds.includes(student.id);
                         return (
-                            <div key={student.id} className="bg-white border rounded-lg shadow-sm p-4 space-y-3">
+                            <div key={student.id} className={`bg-white border rounded-lg shadow-sm p-4 space-y-3 ${isSelected ? 'border-red-300 bg-red-50' : ''}`}>
                                 <div className="flex justify-between items-start">
-                                    <h3 className="text-lg font-bold text-gray-900">{student.name}</h3>
-                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-200 whitespace-nowrap">
-                                        {student.currentRank}
-                                    </span>
+                                    <div className="flex items-center gap-3">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isSelected}
+                                            onChange={() => handleSelectOne(student.id)}
+                                            className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                        />
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-900">{student.name}</h3>
+                                            <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-200 whitespace-nowrap mt-1 inline-block">
+                                                {student.currentRank}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                                 
-                                <div className="text-sm text-gray-600 space-y-1">
+                                <div className="text-sm text-gray-600 space-y-1 pl-8">
                                     <p className="flex justify-between">
                                         <span className="font-medium text-gray-500">Sensei:</span>
                                         <span>{getSenseiName(student.senseiId)}</span>
@@ -536,7 +623,7 @@ export const StudentManager: React.FC<Props> = ({ students, senseis, onUpdate })
                                     </p>
                                 </div>
 
-                                <div className="pt-3 border-t flex justify-end gap-3">
+                                <div className="pt-3 border-t flex justify-end gap-3 pl-8">
                                     {isDeleting ? (
                                         <>
                                             <span className="text-sm text-red-600 font-medium self-center mr-auto">Confirmar exclusão?</span>

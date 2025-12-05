@@ -90,7 +90,7 @@ const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, sens
 
             <div className="grid grid-cols-12 gap-0 divide-x divide-black border-b border-black">
                 <div className="col-span-8 p-0.5 flex items-center">
-                    <span className="font-bold mr-1">Atleta:</span> <span className="uppercase font-bold truncate">{student.name}</span>
+                    <span className="font-bold mr-1">Atleta:</span> <span className="uppercase font-bold truncate text-xs">{student.name}</span>
                 </div>
                 <div className="col-span-4 p-0.5 flex items-center">
                     <span className="font-bold mr-1">Sensei:</span> <span className="uppercase truncate">{senseiName || '-'}</span>

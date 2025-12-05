@@ -163,7 +163,8 @@ export const Report: React.FC<Props> = ({ data }) => {
           @page { 
             /* A4 Landscape Dimensions */
             size: A4 landscape;
-            margin: 0; /* Important: remove default margins */
+            /* Dynamic Margin: 0 for sheets (controlled by padding), 10mm for table reports */
+            margin: ${reportType === 'exam_sheets' ? '0' : '10mm'}; 
           }
           body {
             margin: 0;
@@ -224,23 +225,25 @@ export const Report: React.FC<Props> = ({ data }) => {
               }
           ` : `
               /* Normal Report Styling Overrides */
-              #report-content { padding: 10mm; width: 100%; }
+              #report-content { width: 100%; position: relative !important; }
               table { width: 100% !important; border-collapse: collapse !important; }
-              th, td { border: 1px solid #ddd !important; padding: 8px !important; color: #000 !important; }
-              thead th { background-color: #f3f4f6 !important; font-weight: bold !important; }
+              th, td { border: 1px solid #000 !important; padding: 6px 8px !important; color: #000 !important; }
+              thead th { background-color: #f3f4f6 !important; font-weight: bold !important; color: #000 !important; }
               .status-badge { border: 1px solid #000 !important; background: none !important; color: #000 !important; }
               /* Hide print header on screen, show on print */
               .print-header { display: flex !important; }
+              /* Hide screen header on print */
+              .report-view-header { display: none !important; }
           `}
         }
       `}</style>
 
       {/* Tabs / Header */}
       <div className="flex flex-col xl:flex-row justify-between items-center bg-white p-4 rounded-lg shadow-sm no-print gap-4">
-         <div className="flex flex-wrap gap-2 bg-gray-100 p-1 rounded-lg">
+         <div className="flex flex-wrap gap-2 bg-gray-100 p-1 rounded-lg w-full xl:w-auto overflow-x-auto">
             <button
                 onClick={() => setReportType('results')}
-                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                     reportType === 'results' ? 'bg-white text-red-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
@@ -251,7 +254,7 @@ export const Report: React.FC<Props> = ({ data }) => {
                     setReportType('exam_list');
                     setSortBy('name');
                 }}
-                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                     reportType === 'exam_list' ? 'bg-white text-red-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
@@ -262,7 +265,7 @@ export const Report: React.FC<Props> = ({ data }) => {
                     setReportType('student_list');
                     setSortBy('name');
                 }}
-                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                     reportType === 'student_list' ? 'bg-white text-red-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
@@ -273,7 +276,7 @@ export const Report: React.FC<Props> = ({ data }) => {
                     setReportType('approval_list');
                     setSortBy('name');
                 }}
-                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                     reportType === 'approval_list' ? 'bg-white text-red-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
@@ -284,15 +287,15 @@ export const Report: React.FC<Props> = ({ data }) => {
                     setReportType('exam_sheets');
                     setSortBy('name');
                 }}
-                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                     reportType === 'exam_sheets' ? 'bg-white text-red-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
-                <FileBadge size={16} className="mr-2" /> Fichas de Exame
+                <FileBadge size={16} className="mr-2" /> Fichas
             </button>
          </div>
          
-         <div className="flex items-center gap-2">
+         <div className="flex items-center gap-2 flex-wrap">
              {filterExam && reportType !== 'exam_sheets' && (
                  <>
                     <button 
@@ -302,13 +305,13 @@ export const Report: React.FC<Props> = ({ data }) => {
                         }}
                         className="flex items-center bg-white text-red-700 border border-red-200 px-4 py-2 rounded-md hover:bg-red-50 transition-colors text-sm whitespace-nowrap shadow-sm"
                     >
-                        <FileBadge size={16} className="mr-2" /> Visualizar Fichas
+                        <FileBadge size={16} className="mr-2" /> <span className="hidden sm:inline">Visualizar Fichas</span>
                     </button>
                     <button 
                         onClick={handlePrintSheetsDirectly}
                         className="flex items-center bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors text-sm whitespace-nowrap shadow-lg"
                     >
-                        <Printer size={16} className="mr-2" /> Imprimir Fichas
+                        <Printer size={16} className="mr-2" /> <span className="hidden sm:inline">Imprimir Fichas</span>
                     </button>
                  </>
              )}
@@ -325,7 +328,7 @@ export const Report: React.FC<Props> = ({ data }) => {
 
              <button 
                 onClick={handlePrint}
-                className={`flex items-center bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 transition-colors text-sm whitespace-nowrap shadow-lg ${reportType !== 'exam_sheets' && filterExam ? 'hidden xl:flex' : ''}`}
+                className="flex items-center bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 transition-colors text-sm whitespace-nowrap shadow-lg"
              >
                 <Printer size={16} className="mr-2" /> {reportType === 'exam_sheets' ? 'Imprimir Fichas' : 'Imprimir'}
              </button>
@@ -413,6 +416,19 @@ export const Report: React.FC<Props> = ({ data }) => {
                     <p className="text-gray-600 text-xs tracking-[0.3em] uppercase mt-1">Gestão de Dojos & Exames</p>
                 </div>
              </div>
+             <div className="text-center mt-2 w-full">
+                <h2 className="text-xl font-bold uppercase border-t border-b border-gray-300 py-1">
+                     {reportType === 'results' && 'Boletim de Resultados'}
+                     {reportType === 'exam_list' && 'Lista de Inscritos'}
+                     {reportType === 'student_list' && 'Relação Nominal'}
+                     {reportType === 'approval_list' && 'Lista de Aprovação'}
+                </h2>
+                {selectedExamDetails && (
+                    <p className="mt-1 font-semibold">
+                        {formatDate(selectedExamDetails.date)} - {selectedExamDetails.location}
+                    </p>
+                )}
+             </div>
         </div>
 
         {/* Header for View/Screen */}
@@ -486,63 +502,79 @@ export const Report: React.FC<Props> = ({ data }) => {
 
         {/* Table View (Other Reports) */}
         {reportType !== 'exam_sheets' && (reportType === 'results' || (isExamSelectionRequired && filterExam)) && (
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-red-900 text-white print:bg-gray-100 print:text-black">
-                        <tr>
-                            {/* Common Columns */}
-                            <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Aluno</th>
-                            <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Sensei</th>
-                            <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Faixa Atual</th>
-                            <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Faixa Pretendida</th>
-                            
-                            {/* Results Specific */}
-                            {reportType === 'results' && (
-                                <>
-                                    <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Média</th>
-                                    <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Situação</th>
-                                </>
-                            )}
-
-                            {/* Approval List Specific */}
-                            {reportType === 'approval_list' && (
-                                <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Situação</th>
-                            )}
-                            
-                            {/* Exam List Specific (Empty cols for printing) */}
-                            {reportType === 'exam_list' && (
-                                <>
-                                    <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider border-l border-red-800 print:border-gray-400">Pgto</th>
-                                    <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider border-l border-red-800 print:border-gray-400">Presença</th>
-                                </>
-                            )}
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {sortedData.map((row, idx) => (
-                            <tr key={idx} className="hover:bg-red-50 transition-colors group print:hover:bg-transparent">
-                                <td className="px-4 py-3 whitespace-nowrap border-b border-gray-100 print:border-gray-300">
-                                    <div className="text-sm font-bold text-gray-900 uppercase">{row.studentName}</div>
-                                    {row.studentCpf && <div className="text-xs text-gray-500">{row.studentCpf}</div>}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 border-b border-gray-100 print:border-gray-300">
-                                    {row.senseiName}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-500 border-b border-gray-100 print:border-gray-300">
-                                    <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs print:bg-transparent print:p-0 print:text-black">
-                                        {row.studentRank}
-                                    </span>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-800 border-b border-gray-100 print:border-gray-300">
-                                    {row.targetRank}
-                                </td>
-
-                                {/* Results Columns */}
+            <>
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-red-900 text-white print:bg-gray-100 print:text-black">
+                            <tr>
+                                {/* Common Columns */}
+                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Aluno</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Sensei</th>
+                                <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Faixa Atual</th>
+                                <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Faixa Pretendida</th>
+                                
+                                {/* Results Specific */}
                                 {reportType === 'results' && (
                                     <>
-                                        <td className="px-4 py-3 text-center text-sm font-bold text-gray-800 border-b border-gray-100 print:border-gray-300">
-                                            {row.average != null ? row.average.toFixed(2) : '-'}
-                                        </td>
+                                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Média</th>
+                                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Situação</th>
+                                    </>
+                                )}
+
+                                {/* Approval List Specific */}
+                                {reportType === 'approval_list' && (
+                                    <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider">Situação</th>
+                                )}
+                                
+                                {/* Exam List Specific (Empty cols for printing) */}
+                                {reportType === 'exam_list' && (
+                                    <>
+                                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider border-l border-red-800 print:border-gray-400">Pgto</th>
+                                        <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider border-l border-red-800 print:border-gray-400">Presença</th>
+                                    </>
+                                )}
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {sortedData.map((row, idx) => (
+                                <tr key={idx} className="hover:bg-red-50 transition-colors group print:hover:bg-transparent">
+                                    <td className="px-4 py-3 whitespace-nowrap border-b border-gray-100 print:border-gray-300">
+                                        <div className="text-sm font-bold text-gray-900 uppercase">{row.studentName}</div>
+                                        {row.studentCpf && <div className="text-xs text-gray-500">{row.studentCpf}</div>}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 border-b border-gray-100 print:border-gray-300">
+                                        {row.senseiName}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-500 border-b border-gray-100 print:border-gray-300">
+                                        <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs print:bg-transparent print:p-0 print:text-black">
+                                            {row.studentRank}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-800 border-b border-gray-100 print:border-gray-300">
+                                        {row.targetRank}
+                                    </td>
+
+                                    {/* Results Columns */}
+                                    {reportType === 'results' && (
+                                        <>
+                                            <td className="px-4 py-3 text-center text-sm font-bold text-gray-800 border-b border-gray-100 print:border-gray-300">
+                                                {row.average != null ? row.average.toFixed(2) : '-'}
+                                            </td>
+                                            <td className="px-4 py-3 text-center border-b border-gray-100 print:border-gray-300">
+                                                {row.average != null ? (
+                                                    <span className={`status-badge px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wide shadow-sm ${row.pass ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
+                                                        {row.pass ? 'Aprovado' : 'Reprovado'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400 text-xs italic">Pendente</span>
+                                                )}
+                                            </td>
+                                        </>
+                                    )}
+
+                                    {/* Approval List Columns */}
+                                    {reportType === 'approval_list' && (
                                         <td className="px-4 py-3 text-center border-b border-gray-100 print:border-gray-300">
                                             {row.average != null ? (
                                                 <span className={`status-badge px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wide shadow-sm ${row.pass ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
@@ -552,41 +584,102 @@ export const Report: React.FC<Props> = ({ data }) => {
                                                 <span className="text-gray-400 text-xs italic">Pendente</span>
                                             )}
                                         </td>
-                                    </>
-                                )}
+                                    )}
 
-                                {/* Approval List Columns */}
-                                {reportType === 'approval_list' && (
-                                    <td className="px-4 py-3 text-center border-b border-gray-100 print:border-gray-300">
-                                        {row.average != null ? (
-                                            <span className={`status-badge px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wide shadow-sm ${row.pass ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
+                                    {/* Exam List Checkboxes (Visual only) */}
+                                    {reportType === 'exam_list' && (
+                                        <>
+                                            <td className="px-4 py-3 text-center border-l border-gray-100 print:border-gray-300 border-b">
+                                                <div className="w-5 h-5 border-2 border-gray-300 rounded mx-auto print:border-black"></div>
+                                            </td>
+                                            <td className="px-4 py-3 text-center border-l border-gray-100 print:border-gray-300 border-b">
+                                                <div className="w-5 h-5 border-2 border-gray-300 rounded mx-auto print:border-black"></div>
+                                            </td>
+                                        </>
+                                    )}
+                                </tr>
+                            ))}
+                            {sortedData.length === 0 && (
+                                <tr><td colSpan={10} className="p-12 text-center text-gray-500 italic">Nenhum registro encontrado para os filtros selecionados.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Mobile Card List */}
+                <div className="md:hidden space-y-4 p-4 bg-gray-50">
+                    {sortedData.map((row, idx) => (
+                        <div key={idx} className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 relative overflow-hidden">
+                            {/* Stripe for status or decoration */}
+                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                                reportType === 'results' || reportType === 'approval_list' 
+                                    ? (row.pass ? 'bg-green-500' : (row.average != null ? 'bg-red-500' : 'bg-gray-300'))
+                                    : 'bg-red-800'
+                            }`}></div>
+                            
+                            <div className="pl-3">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h4 className="font-bold text-gray-900 text-sm uppercase">{row.studentName}</h4>
+                                        <p className="text-xs text-gray-500">{row.studentCpf || 'Sem CPF'}</p>
+                                    </div>
+                                    {(reportType === 'results' || reportType === 'approval_list') && (
+                                        row.average != null ? (
+                                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase ${
+                                                row.pass ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                            }`}>
                                                 {row.pass ? 'Aprovado' : 'Reprovado'}
                                             </span>
                                         ) : (
-                                            <span className="text-gray-400 text-xs italic">Pendente</span>
-                                        )}
-                                    </td>
-                                )}
+                                            <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] rounded uppercase">Pendente</span>
+                                        )
+                                    )}
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs mt-3">
+                                    <div>
+                                        <span className="text-gray-400 uppercase block text-[10px]">Sensei</span>
+                                        <span className="font-medium text-gray-700">{row.senseiName}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-400 uppercase block text-[10px]">Faixa Atual</span>
+                                        <span className="font-medium text-gray-700">{row.studentRank}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-400 uppercase block text-[10px]">Faixa Pretendida</span>
+                                        <span className="font-bold text-red-700">{row.targetRank}</span>
+                                    </div>
+                                    
+                                    {reportType === 'results' && (
+                                        <div>
+                                            <span className="text-gray-400 uppercase block text-[10px]">Média</span>
+                                            <span className={`font-bold text-sm ${row.average != null && row.average >= 6 ? 'text-green-600' : 'text-gray-800'}`}>
+                                                {row.average != null ? row.average.toFixed(2) : '-'}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
 
-                                {/* Exam List Checkboxes (Visual only) */}
                                 {reportType === 'exam_list' && (
-                                    <>
-                                        <td className="px-4 py-3 text-center border-l border-gray-100 print:border-gray-300 border-b">
-                                            <div className="w-5 h-5 border-2 border-gray-300 rounded mx-auto print:border-black"></div>
-                                        </td>
-                                        <td className="px-4 py-3 text-center border-l border-gray-100 print:border-gray-300 border-b">
-                                            <div className="w-5 h-5 border-2 border-gray-300 rounded mx-auto print:border-black"></div>
-                                        </td>
-                                    </>
+                                    <div className="mt-3 pt-3 border-t border-gray-100 flex gap-4">
+                                         <div className="flex items-center gap-2">
+                                             <div className="w-4 h-4 border border-gray-300 rounded bg-white"></div>
+                                             <span className="text-xs text-gray-500">Pagamento</span>
+                                         </div>
+                                         <div className="flex items-center gap-2">
+                                             <div className="w-4 h-4 border border-gray-300 rounded bg-white"></div>
+                                             <span className="text-xs text-gray-500">Presença</span>
+                                         </div>
+                                    </div>
                                 )}
-                            </tr>
-                        ))}
-                        {sortedData.length === 0 && (
-                            <tr><td colSpan={10} className="p-12 text-center text-gray-500 italic">Nenhum registro encontrado para os filtros selecionados.</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                            </div>
+                        </div>
+                    ))}
+                    {sortedData.length === 0 && (
+                        <div className="text-center text-gray-500 italic py-8">Nenhum registro encontrado.</div>
+                    )}
+                </div>
+            </>
         )}
       </div>
     </div>

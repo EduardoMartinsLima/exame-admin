@@ -17,6 +17,9 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
   // Local Edits State: Stores changes that haven't been saved to DB yet
   const [edits, setEdits] = useState<Record<string, Partial<ExamRegistration>>>({});
 
+  // Mobile: Track expanded cards
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
   // Filters
   const [filterRank, setFilterRank] = useState<string>('');
   const [filterSensei, setFilterSensei] = useState<string>('');
@@ -35,6 +38,18 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
       setSelectedExamId(data.exams[0].id);
     }
   }, [data.exams, selectedExamId]);
+
+  const toggleItem = (id: string) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   const calculateAverageAndPass = (reg: Partial<ExamRegistration>) => {
     const scores = [
@@ -366,7 +381,7 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
 
       {selectedExamId && (
         <>
-            {/* Desktop Table View (Hidden on Mobile/Tablet - Now hidden up to lg for tablet cards) */}
+            {/* Desktop Table View (Hidden on Mobile/Tablet) */}
             <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                     <div>
@@ -522,116 +537,139 @@ export const ExamGrader: React.FC<Props> = ({ data, onUpdate }) => {
                 </div>
             </div>
 
-            {/* Mobile & Tablet Card View (Visible up to lg) */}
+            {/* Mobile & Tablet Card View (Collapsible) */}
             <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
                 {gradedList.length === 0 ? (
                     <div className="p-8 text-center bg-white rounded-lg shadow-sm text-gray-500 col-span-full">
                         Nenhum aluno encontrado com os filtros selecionados.
                     </div>
                 ) : (
-                    gradedList.map(item => (
-                        <div key={item.originalId} className={`rounded-lg shadow-sm border p-4 ${item.hasPendingChanges ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-200'}`}>
-                            {/* Header: Name and Ranks */}
-                            <div className="flex justify-between items-start mb-4 border-b pb-3">
-                                <div>
-                                    <h3 className="text-base font-bold text-gray-900 line-clamp-1">{item.studentName}</h3>
-                                    <p className="text-xs text-gray-500">Atual: <span className="font-medium">{item.currentRank}</span></p>
-                                </div>
-                                <span className="px-3 py-1 bg-red-50 text-red-800 text-xs font-bold rounded-full border border-red-100 whitespace-nowrap">
-                                    Para: {item.targetRank}
-                                </span>
-                            </div>
-
-                            {/* Inputs Grid */}
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Kihon</label>
-                                    <input 
-                                        type="number" step="0.1" min="0" max="10"
-                                        className="w-full text-center border border-gray-300 rounded-md p-2 text-lg font-medium focus:ring-2 focus:ring-red-500 outline-none"
-                                        placeholder="-"
-                                        value={item.kihon ?? ''}
-                                        onChange={(e) => handleLocalChange(item.originalId, 'kihon', e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Kata 1</label>
-                                    <input 
-                                        type="number" step="0.1" min="0" max="10"
-                                        className="w-full text-center border border-gray-300 rounded-md p-2 text-lg font-medium focus:ring-2 focus:ring-red-500 outline-none"
-                                        placeholder="-"
-                                        value={item.kata1 ?? ''}
-                                        onChange={(e) => handleLocalChange(item.originalId, 'kata1', e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Kata 2</label>
-                                    <input 
-                                        type="number" step="0.1" min="0" max="10"
-                                        className="w-full text-center border border-gray-300 rounded-md p-2 text-lg font-medium focus:ring-2 focus:ring-red-500 outline-none"
-                                        placeholder="-"
-                                        value={item.kata2 ?? ''}
-                                        onChange={(e) => handleLocalChange(item.originalId, 'kata2', e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Kumite</label>
-                                    <input 
-                                        type="number" step="0.1" min="0" max="10"
-                                        className="w-full text-center border border-gray-300 rounded-md p-2 text-lg font-medium focus:ring-2 focus:ring-red-500 outline-none"
-                                        placeholder="-"
-                                        value={item.kumite ?? ''}
-                                        onChange={(e) => handleLocalChange(item.originalId, 'kumite', e.target.value)}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Result Footer */}
-                            <div className="flex justify-between items-center bg-gray-50 -m-4 mt-0 p-4 border-t">
-                                <div className="flex flex-col">
-                                    <span className="text-xs text-gray-500 font-bold uppercase">Média Final</span>
-                                    <div className="flex items-center gap-2">
-                                        <span className={`text-2xl font-bold ${
-                                            (item.average ?? 0) >= 6 ? 'text-green-600' : 'text-red-600'
-                                        }`}>
-                                            {item.average != null ? item.average.toFixed(2) : '-'}
-                                        </span>
-                                        {item.average != null && (
-                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
-                                                (item.average ?? 0) >= 6 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                            }`}>
-                                                {(item.average ?? 0) >= 6 ? 'Aprovado' : 'Reprovado'}
+                    gradedList.map(item => {
+                        const isExpanded = expandedItems.has(item.originalId);
+                        
+                        return (
+                            <div 
+                                key={item.originalId} 
+                                className={`rounded-lg shadow-sm border overflow-hidden transition-all ${
+                                    item.hasPendingChanges ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-200'
+                                }`}
+                            >
+                                {/* Collapsible Header */}
+                                <div 
+                                    className="p-4 cursor-pointer flex justify-between items-center"
+                                    onClick={() => toggleItem(item.originalId)}
+                                >
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <h3 className="text-base font-bold text-gray-900 line-clamp-1 mr-2">{item.studentName}</h3>
+                                            <span className="px-2 py-0.5 bg-red-50 text-red-800 text-[10px] font-bold rounded-full border border-red-100 whitespace-nowrap">
+                                                {item.targetRank}
                                             </span>
-                                        )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-gray-500">
+                                                Média: <span className={`font-bold ${
+                                                    item.average == null ? 'text-gray-400' : (item.average >= 6 ? 'text-green-600' : 'text-red-600')
+                                                }`}>
+                                                    {item.average != null ? item.average.toFixed(2) : '-'}
+                                                </span>
+                                            </span>
+                                            {item.average != null && (
+                                                <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-sm ${
+                                                    (item.average ?? 0) >= 6 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                                }`}>
+                                                    {(item.average ?? 0) >= 6 ? 'APROV' : 'REPROV'}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="ml-3 text-gray-400">
+                                        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    {item.hasPendingChanges && (
-                                        <button 
-                                            type="button"
-                                            onClick={() => handleSaveRow(item.originalId)}
-                                            className="bg-green-600 text-white p-3 rounded-full shadow-md active:bg-green-700 transition-colors flex items-center gap-2"
-                                            title="Salvar"
-                                        >
-                                            <Save size={20} /> <span className="text-xs font-bold">Salvar</span>
-                                        </button>
-                                    )}
-                                    <button 
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            handleClearGrades(item.originalId);
-                                        }}
-                                        className="bg-white text-gray-400 hover:text-orange-600 p-3 rounded-full border shadow-sm active:bg-gray-100 transition-colors"
-                                        title="Limpar Notas"
-                                    >
-                                        <Eraser size={20} />
-                                    </button>
-                                </div>
+
+                                {/* Collapsible Body */}
+                                {isExpanded && (
+                                    <div className="p-4 pt-0 border-t border-dashed border-gray-200">
+                                        {/* Inputs Grid */}
+                                        <div className="grid grid-cols-2 gap-3 mt-4 mb-4">
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">Kihon</label>
+                                                <input 
+                                                    type="number" step="0.1" min="0" max="10"
+                                                    className="w-full text-center border border-gray-300 rounded-md p-2 text-lg font-medium focus:ring-2 focus:ring-red-500 outline-none"
+                                                    placeholder="-"
+                                                    value={item.kihon ?? ''}
+                                                    onChange={(e) => handleLocalChange(item.originalId, 'kihon', e.target.value)}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">Kata 1</label>
+                                                <input 
+                                                    type="number" step="0.1" min="0" max="10"
+                                                    className="w-full text-center border border-gray-300 rounded-md p-2 text-lg font-medium focus:ring-2 focus:ring-red-500 outline-none"
+                                                    placeholder="-"
+                                                    value={item.kata1 ?? ''}
+                                                    onChange={(e) => handleLocalChange(item.originalId, 'kata1', e.target.value)}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">Kata 2</label>
+                                                <input 
+                                                    type="number" step="0.1" min="0" max="10"
+                                                    className="w-full text-center border border-gray-300 rounded-md p-2 text-lg font-medium focus:ring-2 focus:ring-red-500 outline-none"
+                                                    placeholder="-"
+                                                    value={item.kata2 ?? ''}
+                                                    onChange={(e) => handleLocalChange(item.originalId, 'kata2', e.target.value)}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">Kumite</label>
+                                                <input 
+                                                    type="number" step="0.1" min="0" max="10"
+                                                    className="w-full text-center border border-gray-300 rounded-md p-2 text-lg font-medium focus:ring-2 focus:ring-red-500 outline-none"
+                                                    placeholder="-"
+                                                    value={item.kumite ?? ''}
+                                                    onChange={(e) => handleLocalChange(item.originalId, 'kumite', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Actions Footer */}
+                                        <div className="flex justify-between items-center bg-gray-50 -m-4 p-4 border-t">
+                                            <div className="text-xs text-gray-500">
+                                                Faixa Atual: <span className="font-semibold">{item.currentRank}</span>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {item.hasPendingChanges && (
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => handleSaveRow(item.originalId)}
+                                                        className="bg-green-600 text-white px-4 py-2 rounded-full shadow-md active:bg-green-700 transition-colors flex items-center gap-2"
+                                                        title="Salvar"
+                                                    >
+                                                        <Save size={16} /> <span className="text-xs font-bold">Salvar</span>
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        handleClearGrades(item.originalId);
+                                                    }}
+                                                    className="bg-white text-gray-400 hover:text-orange-600 p-2 rounded-full border shadow-sm active:bg-gray-100 transition-colors"
+                                                    title="Limpar Notas"
+                                                >
+                                                    <Eraser size={18} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
         </>
