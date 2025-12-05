@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Exam, Student, ExamRegistration, Rank, Sensei } from '../types';
 import { storageService } from '../services/storageService';
 import { RANKS } from '../constants';
-import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check, Pencil, ArrowUpDown, CheckSquare, FileText, FileDown } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Plus, Trash2, ChevronRight, CheckCircle, X, Check, Pencil, ArrowUpDown, CheckSquare, FileText, FileDown, MoreVertical } from 'lucide-react';
 import { ExamSheet } from './ExamSheet';
 
 interface Props {
@@ -294,7 +294,6 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
   };
 
   const handleTogglePresence = async (regId: string, currentStatus: boolean | undefined) => {
-    // Optimistic toggle could be implemented, but simple wait is safer
     await storageService.updateResult(regId, { present: !currentStatus });
     onUpdate();
   };
@@ -302,7 +301,6 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
   const handleMarkAllPresent = async () => {
     if (!selectedExamId) return;
     
-    // Filter registrations for this exam that aren't already marked present
     const regsToUpdate = registrations.filter(r => r.examId === selectedExamId && !r.present);
 
     if (regsToUpdate.length === 0) return;
@@ -332,7 +330,6 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
     setSelectedStudentId(studentId);
     if (!studentId) return;
 
-    // Auto-suggest next rank
     const student = students.find(s => s.id === studentId);
     if (student) {
       const currentIdx = RANKS.indexOf(student.currentRank);
@@ -385,7 +382,8 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-8rem)]">
+    // Responsive Container: Auto height on mobile, fixed calculated height on desktop
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto lg:h-[calc(100vh-8rem)]">
       {/* Styles for PDF Generation */}
       <style>{`
          .exam-sheet-page {
@@ -494,9 +492,9 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
         </div>
 
         {/* Exam List */}
-        <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-0">
+        <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col lg:overflow-hidden min-h-[300px]">
           <h3 className="p-4 bg-gray-50 border-b font-semibold text-gray-700 flex-shrink-0">Selecione um Exame</h3>
-          <div className="overflow-y-auto flex-1 p-2 space-y-2">
+          <div className="lg:overflow-y-auto flex-1 p-2 space-y-2">
             {exams.length === 0 ? (
                 <p className="p-4 text-center text-gray-400 text-sm">Nenhum exame cadastrado.</p>
             ) : (
@@ -553,23 +551,23 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
       </div>
 
       {/* Right Column: Manage Participants */}
-      <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-0">
+      <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col lg:overflow-hidden min-h-[500px]">
         {selectedExamId && currentExam ? (
             <>
-                <div className="p-5 border-b bg-gray-50 flex justify-between items-center flex-shrink-0">
+                <div className="p-4 md:p-5 border-b bg-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 flex-shrink-0 sticky top-0 z-20">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                        <h2 className="text-lg md:text-xl font-bold text-gray-800 flex items-center">
                             Gerenciar Participantes
                         </h2>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-xs md:text-sm text-gray-600 mt-1">
                             {formatDate(currentExam.date)} em {currentExam.location}
                         </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                         <button
                             onClick={handleDownloadAllPDF}
                             disabled={isSubmitting || currentRegistrations.length === 0}
-                            className="flex items-center text-xs font-medium text-green-700 hover:text-green-900 hover:bg-green-50 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-green-200"
+                            className="flex-1 md:flex-none flex items-center justify-center text-xs font-medium text-green-700 hover:text-green-900 hover:bg-green-50 px-3 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-green-200"
                             title="Baixar todas as fichas"
                         >
                             <FileDown size={16} className="mr-1.5" />
@@ -579,19 +577,19 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
                         <button
                             onClick={handleMarkAllPresent}
                             disabled={isSubmitting || currentRegistrations.length === 0}
-                            className="flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 md:flex-none flex items-center justify-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-blue-200"
                             title="Marcar presença para todos os inscritos"
                         >
                             <CheckSquare size={16} className="mr-1.5" />
-                            Marcar Todos Presentes
+                            Presença (Todos)
                         </button>
-                        <div className="bg-white px-3 py-1 rounded-full border shadow-sm text-sm font-medium text-gray-700">
+                        <div className="bg-white px-3 py-2 rounded-full border shadow-sm text-xs font-medium text-gray-700 w-full md:w-auto text-center">
                             Total: {currentRegistrations.length}
                         </div>
                     </div>
                 </div>
 
-                <div className="p-5 overflow-y-auto flex-1 flex flex-col min-h-0">
+                <div className="p-4 md:p-5 lg:overflow-y-auto flex-1 flex flex-col min-h-0">
                     {/* Add Form */}
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6 flex-shrink-0">
                         <h4 className="text-sm font-bold text-blue-900 mb-3 flex items-center">
@@ -633,8 +631,8 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
                         </form>
                     </div>
 
-                    {/* Table */}
-                    <div className="flex-1 rounded-lg border border-gray-200 overflow-hidden flex flex-col">
+                    {/* Desktop Table (> 1024px) */}
+                    <div className="hidden lg:block flex-1 rounded-lg border border-gray-200 overflow-hidden flex flex-col">
                         <div className="overflow-x-auto flex-1">
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50 sticky top-0 z-10">
@@ -778,10 +776,85 @@ export const ExamManager: React.FC<Props> = ({ exams, students, registrations, s
                             </table>
                         </div>
                     </div>
+
+                    {/* Mobile/Tablet Card View (< 1024px) */}
+                    <div className="lg:hidden space-y-3">
+                         {sortedRegistrations.length === 0 ? (
+                             <div className="text-center p-8 bg-gray-50 rounded border border-gray-100 text-gray-400 text-sm">
+                                Nenhum aluno vinculado.
+                             </div>
+                         ) : (
+                             sortedRegistrations.map(reg => {
+                                 const s = students.find(st => st.id === reg.studentId);
+                                 const isDeleting = deletingId === reg.id;
+                                 return (
+                                     <div key={reg.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                         <div className="flex justify-between items-start mb-3">
+                                             <div className="flex items-center gap-3">
+                                                 <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold border border-red-200">
+                                                     {s ? getInitials(s.name) : '?'}
+                                                 </div>
+                                                 <div>
+                                                     <div className="font-bold text-gray-900">{s?.name || 'Desconhecido'}</div>
+                                                     <div className="text-xs text-gray-500">{s?.cpf || 'Sem CPF'}</div>
+                                                 </div>
+                                             </div>
+                                             <div className="flex items-center gap-1">
+                                                 {isDeleting ? (
+                                                     <div className="flex items-center gap-2 bg-red-50 p-1 rounded">
+                                                         <span className="text-[10px] text-red-600 font-bold">Excluir?</span>
+                                                         <button onClick={() => confirmDelete(reg.id)} className="text-red-600 p-1 hover:bg-red-100 rounded"><Check size={16}/></button>
+                                                         <button onClick={() => setDeletingId(null)} className="text-gray-500 p-1 hover:bg-gray-100 rounded"><X size={16}/></button>
+                                                     </div>
+                                                 ) : (
+                                                     <button 
+                                                         onClick={() => setDeletingId(reg.id)}
+                                                         className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50"
+                                                     >
+                                                         <Trash2 size={18} />
+                                                     </button>
+                                                 )}
+                                             </div>
+                                         </div>
+                                         
+                                         <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                                             <div>
+                                                 <span className="block text-gray-400 uppercase text-[10px] mb-1">Faixa Atual</span>
+                                                 {s && <span className={`px-2 py-1 rounded-full font-semibold ${getRankBadgeStyle(s.currentRank)}`}>{s.currentRank}</span>}
+                                             </div>
+                                             <div>
+                                                 <span className="block text-gray-400 uppercase text-[10px] mb-1">Faixa Pretendida</span>
+                                                 <span className={`px-2 py-1 rounded-full font-semibold ${getRankBadgeStyle(reg.targetRank)}`}>{reg.targetRank}</span>
+                                             </div>
+                                         </div>
+
+                                         <div className="flex items-center justify-between border-t border-gray-100 pt-3 mt-1">
+                                             <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                                                 <input 
+                                                     type="checkbox"
+                                                     checked={!!reg.present}
+                                                     onChange={() => handleTogglePresence(reg.id, reg.present)}
+                                                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                 />
+                                                 <span>Presença confirmada</span>
+                                             </label>
+                                             
+                                             <button
+                                                 onClick={() => handleDownloadPDF(reg)}
+                                                 className="flex items-center gap-1 text-blue-600 bg-blue-50 px-3 py-1.5 rounded text-xs font-medium border border-blue-100"
+                                             >
+                                                 <FileText size={14} /> Ficha
+                                             </button>
+                                         </div>
+                                     </div>
+                                 );
+                             })
+                         )}
+                    </div>
                 </div>
             </>
         ) : (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-gray-50 flex-1">
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-gray-50 flex-1 min-h-[300px]">
                 <CheckCircle size={48} className="mb-4 opacity-20" />
                 <p className="text-lg font-medium">Nenhum exame selecionado</p>
                 <p className="text-sm">Selecione um exame na lista à esquerda para gerenciar os participantes.</p>

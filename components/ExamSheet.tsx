@@ -118,10 +118,10 @@ const SharedHeader: React.FC<HeaderProps> = ({ student, exam, registration, sens
                         <div className="col-span-8 font-bold text-sm text-center flex items-center justify-center">
                             Resultado do Exame de Faixa:
                         </div>
-                        {/* Colored Box for Target Rank (Athlete Side) */}
-                        <div className={`col-span-4 text-center border-l border-black ${getRankColorClasses(registration.targetRank)}`}>
-                             <div className="text-[7px] opacity-80">Para:</div>
-                             <div className="font-bold text-[10px] leading-none uppercase">{registration.targetRank}</div>
+                        {/* Colored Box for Target Rank (Athlete Side) - UPDATED: Single Line */}
+                        <div className={`col-span-4 flex items-center justify-center border-l border-black px-1 ${getRankColorClasses(registration.targetRank)}`}>
+                             <span className="text-[9px] font-bold mr-1 opacity-80">Para:</span>
+                             <span className="font-bold text-[10px] leading-none uppercase">{registration.targetRank}</span>
                         </div>
                      </div>
                 ) : (
